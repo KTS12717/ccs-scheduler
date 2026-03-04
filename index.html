@@ -1947,7 +1947,7 @@ const PartSchedule=({currentUser,participants,onUpdate})=>{
   const p=participants.find(x=>x.id===currentUser.participantId)||participants[0];
   if(!p)return null;
   const[openDay,setOpenDay]=useState(null);
-  const[showFavForm,setShowFavForm]=useState(null); // location object
+  const[showFavForm,setShowFavForm]=useState(null);
   const[favReason,setFavReason]=useState('');
   const[favNote,setFavNote]=useState('');
   const favorites=p.favoriteLocations||[];
@@ -1955,18 +1955,20 @@ const PartSchedule=({currentUser,participants,onUpdate})=>{
   const FAV_REASONS=['I felt safe here','Great community activity','Fun and enjoyable','Good food','Helps with my goals','I made friends here','Easy to get to','I want to go back','Other'];
 
   const saveFavorite=()=>{
-    if(!showFavForm)return;
+    if(!showFavForm||!favReason)return;
     const fav={id:uid(),locationId:showFavForm.id,locationLabel:showFavForm.label,address:showFavForm.address,reason:favReason,note:favNote,date:todayStr(),participantId:p.id,participantName:`${p.firstName} ${p.lastName}`};
     const updated={...p,favoriteLocations:[...favorites,fav]};
-    const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
-    LS.set('ccs_participants',all);onUpdate('participants',all);
+    const all=participants.map(x=>x.id===p.id?updated:x);
+    LS.set('ccs_participants',all);
+    onUpdate('participants',all);
     setShowFavForm(null);setFavReason('');setFavNote('');
   };
 
   const removeFavorite=(favId)=>{
     const updated={...p,favoriteLocations:favorites.filter(f=>f.id!==favId)};
-    const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
-    LS.set('ccs_participants',all);onUpdate('participants',all);
+    const all=participants.map(x=>x.id===p.id?updated:x);
+    LS.set('ccs_participants',all);
+    onUpdate('participants',all);
   };
 
   return h('div',{className:'fade-up'},
@@ -2153,7 +2155,7 @@ const PartGoals=({currentUser,participants,onUpdate})=>{
   const addGoal=()=>{
     if(!newGoal.trim())return;
     const updated={...p,goals:[...(p.goals||[]),newGoal.trim()]};
-    const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
+    const all=participants.map(x=>x.id===p.id?updated:x);
     LS.set('ccs_participants',all);onUpdate('participants',all);setNewGoal('');setShowAdd(false);
   };
 
@@ -2514,12 +2516,12 @@ const PartHousing=({currentUser,participants,onUpdate})=>{
 
   const saveChecked=(key,val)=>{
     const updated={...p,housing:{...housing,checkedItems:{...checkedItems,[key]:val}}};
-    const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
+    const all=participants.map(x=>x.id===p.id?updated:x);
     LS.set('ccs_participants',all);onUpdate('participants',all);
   };
   const savePref=(key,val)=>{
     const updated={...p,housing:{...housing,prefs:{...prefs,[key]:val}}};
-    const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
+    const all=participants.map(x=>x.id===p.id?updated:x);
     LS.set('ccs_participants',all);onUpdate('participants',all);
   };
 
@@ -2720,7 +2722,7 @@ const PartHousing=({currentUser,participants,onUpdate})=>{
             roommateCount.forEach(x=>{newPrefs[x.id]=false;});
             newPrefs[rc.id]=true;
             const updated={...p,housing:{...housing,prefs:newPrefs}};
-            const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
+            const all=participants.map(x=>x.id===p.id?updated:x);
             LS.set('ccs_participants',all);onUpdate('participants',all);
           },
           style:{display:'flex',alignItems:'center',gap:12,padding:'11px 14px',borderRadius:10,cursor:'pointer',border:`2px solid ${prefs[rc.id]?'var(--blue)':'var(--border)'}`,background:prefs[rc.id]?'rgba(59,130,246,0.08)':'var(--bg3)',marginBottom:8,transition:'all 0.15s',userSelect:'none'}
