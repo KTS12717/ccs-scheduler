@@ -2669,48 +2669,20 @@ const AdminSecurity=({users,onUpdate})=>{
   );
 };
 
-// ─── Desired Locations (City/Zip search with geocoding) ───
+// ─── Desired Locations (City/Zip search with Google Maps) ───
 const DesiredLocations=({p,participants,onUpdate,housing})=>{
-  const[query,setQuery]=useState('');
-  const[results,setResults]=useState([]);
-  const[searching,setSearching]=useState(false);
-  const[searchErr,setSearchErr]=useState('');
+  const[input,setInput]=useState('');
   const saved=housing.desiredLocations||[];
 
-  const search=async()=>{
-    if(!query.trim())return;
-    setSearching(true);setResults([]);setSearchErr('');
-    try{
-      const q=encodeURIComponent(query.trim()+', USA');
-      const url=`https://nominatim.openstreetmap.org/search?q=${q}&format=json&addressdetails=1&limit=5&countrycodes=us`;
-      const res=await fetch(url,{headers:{'Accept-Language':'en','User-Agent':'CCSScheduler/1.0'}});
-      const data=await res.json();
-      if(!data||data.length===0){setSearchErr('No locations found. Try a different city or zip code.');setSearching(false);return;}
-      // Format results nicely
-      const formatted=data.map(r=>{
-        const a=r.address||{};
-        const city=a.city||a.town||a.village||a.county||'';
-        const state=a.state||'';
-        const zip=a.postcode||'';
-        const displayName=[city,state,zip].filter(Boolean).join(', ')||r.display_name.split(',').slice(0,3).join(',').trim();
-        return {displayName,lat:parseFloat(r.lat),lng:parseFloat(r.lon),placeId:r.place_id};
-      });
-      // Deduplicate by displayName
-      const seen=new Set();
-      const unique=formatted.filter(x=>{if(seen.has(x.displayName))return false;seen.add(x.displayName);return true;});
-      setResults(unique);
-    }catch(e){
-      setSearchErr('Could not search — check your internet connection.');
-    }
-    setSearching(false);
-  };
-
-  const addLocation=(loc)=>{
-    if(saved.some(s=>s.displayName===loc.displayName))return;
+  const addLocation=()=>{
+    const val=input.trim();
+    if(!val)return;
+    if(saved.some(s=>s.displayName.toLowerCase()===val.toLowerCase()))return;
+    const loc={displayName:val,mapsUrl:`https://www.google.com/maps/search/${encodeURIComponent(val+', CA')}`};
     const updated={...p,housing:{...housing,desiredLocations:[...saved,loc]}};
     const all=participants.map(x=>x.id===p.id?updated:x);
     LS.set('ccs_participants',all);onUpdate('participants',all);
-    setResults([]);setQuery('');
+    setInput('');
   };
 
   const removeLocation=(displayName)=>{
@@ -2721,65 +2693,58 @@ const DesiredLocations=({p,participants,onUpdate,housing})=>{
 
   return h('div',{className:'card',style:{marginBottom:12}},
     h('div',{style:{fontWeight:800,fontSize:15,marginBottom:4}},'🗺️ Cities & Towns I Want to Live In'),
-    h('div',{style:{fontSize:12,color:'var(--text3)',marginBottom:12}},'Type a city name or zip code — we\'ll find it on the map for you'),
+    h('div',{style:{fontSize:12,color:'var(--text3)',marginBottom:14}},'Type a city, town, or zip code and tap Add. Each one will have a Google Maps link.'),
 
-    // Search bar
-    h('div',{style:{display:'flex',gap:8,marginBottom:10}},
+    // Input row
+    h('div',{style:{display:'flex',gap:8,marginBottom:14}},
       h('input',{
         className:'form-input',
-        value:query,
-        onChange:e=>setQuery(e.target.value),
-        onKeyDown:e=>e.key==='Enter'&&search(),
-        placeholder:'e.g. Elk Grove, Sacramento, 95758…',
-        style:{flex:1}
+        value:input,
+        onChange:e=>setInput(e.target.value),
+        onKeyDown:e=>e.key==='Enter'&&addLocation(),
+        placeholder:'e.g. Elk Grove, 95758, Modesto…',
+        style:{flex:1,fontSize:14}
       }),
       h('button',{
         className:'btn btn-primary',
-        onClick:search,
-        disabled:searching||!query.trim(),
-        style:{flexShrink:0,minWidth:72}
-      },searching?'…':'🔍 Find')
+        onClick:addLocation,
+        disabled:!input.trim(),
+        style:{flexShrink:0,padding:'10px 16px',fontWeight:700}
+      },'+ Add')
     ),
 
-    // Search error
-    searchErr&&h('div',{style:{fontSize:12,color:'var(--red)',marginBottom:8,padding:'8px 10px',background:'rgba(239,68,68,0.08)',borderRadius:8}},searchErr),
-
-    // Search results
-    results.length>0&&h('div',{style:{marginBottom:12}},
-      h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,marginBottom:6}},'Select a location:'),
-      results.map((r,i)=>h('div',{key:i,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',background:'var(--bg3)',borderRadius:10,marginBottom:6,cursor:'pointer',border:'1px solid var(--border)'},
-        onClick:()=>addLocation(r)},
-        h('div',{style:{display:'flex',alignItems:'center',gap:8}},
-          h('span',{style:{fontSize:18}},'📍'),
-          h('div',null,
-            h('div',{style:{fontWeight:600,fontSize:13}},r.displayName),
-            h('div',{style:{fontSize:11,color:'var(--text3)'}},'Lat: ',r.lat.toFixed(4),' · Lng: ',r.lng.toFixed(4))
-          )
-        ),
-        h('span',{style:{fontSize:12,color:'var(--blue)',fontWeight:700}},saved.some(s=>s.displayName===r.displayName)?'✓ Added':'+ Add')
-      ))
-    ),
-
-    // Saved locations
+    // Saved locations list
     saved.length===0
-      ?h('div',{style:{textAlign:'center',padding:'16px 0',color:'var(--text3)',fontSize:13}},'🗺️ No locations saved yet — search above to add some')
+      ?h('div',{style:{textAlign:'center',padding:'20px 0',color:'var(--text3)',fontSize:13,background:'var(--bg3)',borderRadius:10}},
+          h('div',{style:{fontSize:32,marginBottom:6}},'🗺️'),
+          'No locations added yet'
+        )
       :h('div',null,
-          h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,marginBottom:8}},'My Saved Locations (',saved.length,')'),
-          saved.map((loc,i)=>h('div',{key:i,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',background:'rgba(59,130,246,0.06)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:10,marginBottom:8}},
-            h('div',{style:{display:'flex',alignItems:'center',gap:10}},
-              h('span',{style:{fontSize:22}},'📍'),
+          h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.6,marginBottom:8}},saved.length,' location'+(saved.length!==1?'s':'')+' saved'),
+          saved.map((loc,i)=>h('div',{key:i,style:{
+            display:'flex',alignItems:'center',justifyContent:'space-between',
+            padding:'13px 14px',
+            background:'rgba(59,130,246,0.06)',
+            border:'1px solid rgba(59,130,246,0.18)',
+            borderRadius:12,
+            marginBottom:8
+          }},
+            h('div',{style:{display:'flex',alignItems:'center',gap:12}},
+              h('div',{style:{width:38,height:38,borderRadius:10,background:'rgba(59,130,246,0.15)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:18}},'📍'),
               h('div',null,
-                h('div',{style:{fontWeight:700,fontSize:14}},loc.displayName),
+                h('div',{style:{fontWeight:700,fontSize:14,marginBottom:4}},loc.displayName),
                 h('a',{
-                  href:`https://www.google.com/maps/search/${encodeURIComponent(loc.displayName)}`,
+                  href:loc.mapsUrl,
                   target:'_blank',
-                  style:{fontSize:11,color:'var(--blue)',textDecoration:'none',display:'inline-flex',alignItems:'center',gap:3,marginTop:3}
-                },'🗺 View on Google Maps ↗')
+                  rel:'noopener',
+                  style:{fontSize:12,color:'var(--blue)',textDecoration:'none',display:'inline-flex',alignItems:'center',gap:4,padding:'3px 8px',background:'rgba(59,130,246,0.1)',borderRadius:6,fontWeight:600}
+                },'🗺 Open in Google Maps ↗')
               )
             ),
             h('button',{
               onClick:()=>removeLocation(loc.displayName),
-              style:{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',padding:6,fontSize:16}
+              style:{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',padding:'6px 8px',fontSize:18,lineHeight:1,borderRadius:8,flexShrink:0},
+              title:'Remove'
             },'✕')
           ))
         )
