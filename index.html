@@ -1,9 +1,9 @@
-A<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<meta name="apple-mobile-web-app-capable"A content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <title>CCS Scheduler</title>
 <link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;CCS Scheduler&quot;,&quot;short_name&quot;:&quot;CCS&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#0f172a&quot;,&quot;theme_color&quot;:&quot;#3b82f6&quot;}"/>
@@ -2669,6 +2669,123 @@ const AdminSecurity=({users,onUpdate})=>{
   );
 };
 
+// ─── Desired Locations (City/Zip search with geocoding) ───
+const DesiredLocations=({p,participants,onUpdate,housing})=>{
+  const[query,setQuery]=useState('');
+  const[results,setResults]=useState([]);
+  const[searching,setSearching]=useState(false);
+  const[searchErr,setSearchErr]=useState('');
+  const saved=housing.desiredLocations||[];
+
+  const search=async()=>{
+    if(!query.trim())return;
+    setSearching(true);setResults([]);setSearchErr('');
+    try{
+      const q=encodeURIComponent(query.trim()+', USA');
+      const url=`https://nominatim.openstreetmap.org/search?q=${q}&format=json&addressdetails=1&limit=5&countrycodes=us`;
+      const res=await fetch(url,{headers:{'Accept-Language':'en','User-Agent':'CCSScheduler/1.0'}});
+      const data=await res.json();
+      if(!data||data.length===0){setSearchErr('No locations found. Try a different city or zip code.');setSearching(false);return;}
+      // Format results nicely
+      const formatted=data.map(r=>{
+        const a=r.address||{};
+        const city=a.city||a.town||a.village||a.county||'';
+        const state=a.state||'';
+        const zip=a.postcode||'';
+        const displayName=[city,state,zip].filter(Boolean).join(', ')||r.display_name.split(',').slice(0,3).join(',').trim();
+        return {displayName,lat:parseFloat(r.lat),lng:parseFloat(r.lon),placeId:r.place_id};
+      });
+      // Deduplicate by displayName
+      const seen=new Set();
+      const unique=formatted.filter(x=>{if(seen.has(x.displayName))return false;seen.add(x.displayName);return true;});
+      setResults(unique);
+    }catch(e){
+      setSearchErr('Could not search — check your internet connection.');
+    }
+    setSearching(false);
+  };
+
+  const addLocation=(loc)=>{
+    if(saved.some(s=>s.displayName===loc.displayName))return;
+    const updated={...p,housing:{...housing,desiredLocations:[...saved,loc]}};
+    const all=participants.map(x=>x.id===p.id?updated:x);
+    LS.set('ccs_participants',all);onUpdate('participants',all);
+    setResults([]);setQuery('');
+  };
+
+  const removeLocation=(displayName)=>{
+    const updated={...p,housing:{...housing,desiredLocations:saved.filter(s=>s.displayName!==displayName)}};
+    const all=participants.map(x=>x.id===p.id?updated:x);
+    LS.set('ccs_participants',all);onUpdate('participants',all);
+  };
+
+  return h('div',{className:'card',style:{marginBottom:12}},
+    h('div',{style:{fontWeight:800,fontSize:15,marginBottom:4}},'🗺️ Cities & Towns I Want to Live In'),
+    h('div',{style:{fontSize:12,color:'var(--text3)',marginBottom:12}},'Type a city name or zip code — we\'ll find it on the map for you'),
+
+    // Search bar
+    h('div',{style:{display:'flex',gap:8,marginBottom:10}},
+      h('input',{
+        className:'form-input',
+        value:query,
+        onChange:e=>setQuery(e.target.value),
+        onKeyDown:e=>e.key==='Enter'&&search(),
+        placeholder:'e.g. Elk Grove, Sacramento, 95758…',
+        style:{flex:1}
+      }),
+      h('button',{
+        className:'btn btn-primary',
+        onClick:search,
+        disabled:searching||!query.trim(),
+        style:{flexShrink:0,minWidth:72}
+      },searching?'…':'🔍 Find')
+    ),
+
+    // Search error
+    searchErr&&h('div',{style:{fontSize:12,color:'var(--red)',marginBottom:8,padding:'8px 10px',background:'rgba(239,68,68,0.08)',borderRadius:8}},searchErr),
+
+    // Search results
+    results.length>0&&h('div',{style:{marginBottom:12}},
+      h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,marginBottom:6}},'Select a location:'),
+      results.map((r,i)=>h('div',{key:i,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px',background:'var(--bg3)',borderRadius:10,marginBottom:6,cursor:'pointer',border:'1px solid var(--border)'},
+        onClick:()=>addLocation(r)},
+        h('div',{style:{display:'flex',alignItems:'center',gap:8}},
+          h('span',{style:{fontSize:18}},'📍'),
+          h('div',null,
+            h('div',{style:{fontWeight:600,fontSize:13}},r.displayName),
+            h('div',{style:{fontSize:11,color:'var(--text3)'}},'Lat: ',r.lat.toFixed(4),' · Lng: ',r.lng.toFixed(4))
+          )
+        ),
+        h('span',{style:{fontSize:12,color:'var(--blue)',fontWeight:700}},saved.some(s=>s.displayName===r.displayName)?'✓ Added':'+ Add')
+      ))
+    ),
+
+    // Saved locations
+    saved.length===0
+      ?h('div',{style:{textAlign:'center',padding:'16px 0',color:'var(--text3)',fontSize:13}},'🗺️ No locations saved yet — search above to add some')
+      :h('div',null,
+          h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,marginBottom:8}},'My Saved Locations (',saved.length,')'),
+          saved.map((loc,i)=>h('div',{key:i,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',background:'rgba(59,130,246,0.06)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:10,marginBottom:8}},
+            h('div',{style:{display:'flex',alignItems:'center',gap:10}},
+              h('span',{style:{fontSize:22}},'📍'),
+              h('div',null,
+                h('div',{style:{fontWeight:700,fontSize:14}},loc.displayName),
+                h('a',{
+                  href:`https://www.google.com/maps/search/${encodeURIComponent(loc.displayName)}`,
+                  target:'_blank',
+                  style:{fontSize:11,color:'var(--blue)',textDecoration:'none',display:'inline-flex',alignItems:'center',gap:3,marginTop:3}
+                },'🗺 View on Google Maps ↗')
+              )
+            ),
+            h('button',{
+              onClick:()=>removeLocation(loc.displayName),
+              style:{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',padding:6,fontSize:16}
+            },'✕')
+          ))
+        )
+  );
+};
+
 // ─── PARTICIPANT HOUSING ───
 const PartHousing=({currentUser,participants,onUpdate})=>{
   const p=participants.find(x=>x.id===currentUser.participantId)||participants[0];
@@ -2913,8 +3030,10 @@ const PartHousing=({currentUser,participants,onUpdate})=>{
           locationPrefs.map(lp=>h(TogglePill,{key:lp.id,id:lp.id,emoji:lp.emoji,label:lp.label,selected:!!(prefs[lp.id]),onToggle:(id,val)=>savePref(id,val)}))
         )
       ),
+      // Desired cities/towns/zip codes
+      h(DesiredLocations,{p,participants,onUpdate,housing,prefs}),
       // Summary
-      (Object.values(prefs).some(Boolean))&&h('div',{style:{background:'rgba(34,197,94,0.08)',border:'1px solid rgba(34,197,94,0.2)',borderRadius:12,padding:16,marginBottom:12}},
+      (Object.values(prefs).some(Boolean)||(housing.desiredLocations||[]).length>0)&&h('div',{style:{background:'rgba(34,197,94,0.08)',border:'1px solid rgba(34,197,94,0.2)',borderRadius:12,padding:16,marginBottom:12}},
         h('div',{style:{fontWeight:700,fontSize:14,marginBottom:8,color:'var(--green)'}},'💚 My Housing Wish List'),
         housingTypes.filter(x=>prefs[x.id]).length>0&&h('div',{style:{marginBottom:8}},
           h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,marginBottom:4}},'Housing Type'),
@@ -2928,9 +3047,21 @@ const PartHousing=({currentUser,participants,onUpdate})=>{
           h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,marginBottom:4}},'Roommate Must-Haves'),
           roommatePrefs.filter(x=>prefs[x.id]).map(x=>h('span',{key:x.id,className:'chip',style:{marginRight:4}},x.emoji,' ',x.label))
         ),
-        locationPrefs.filter(x=>prefs[x.id]).length>0&&h('div',null,
+        locationPrefs.filter(x=>prefs[x.id]).length>0&&h('div',{style:{marginBottom:8}},
           h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,marginBottom:4}},'Location Must-Haves'),
           locationPrefs.filter(x=>prefs[x.id]).map(x=>h('span',{key:x.id,className:'chip',style:{marginRight:4}},x.emoji,' ',x.label))
+        ),
+        (housing.desiredLocations||[]).length>0&&h('div',null,
+          h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,marginBottom:6}},'Cities / Towns I Want to Live In'),
+          (housing.desiredLocations||[]).map((loc,i)=>
+            h('div',{key:i,style:{display:'flex',alignItems:'center',gap:8,marginBottom:4}},
+              h('span',{style:{fontSize:14}},'📍'),
+              h('span',{style:{fontSize:13,fontWeight:600}},loc.displayName),
+              h('a',{href:`https://www.google.com/maps/search/${encodeURIComponent(loc.displayName)}`,target:'_blank',style:{fontSize:11,color:'var(--blue)',textDecoration:'none'}},
+                h('span',{style:{fontSize:10}},'View Map ↗')
+              )
+            )
+          )
         )
       ),
       // Help footer
