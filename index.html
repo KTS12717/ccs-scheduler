@@ -385,21 +385,172 @@ const hrsRemaining=(p,adjustments)=>{
 
 // ─── Seed default data ───
 const seedData=()=>{
-  if(LS.get('ccs_seeded',false))return;
+  if(LSraw.get('ccs_seeded_v4',false))return;
+  // Clear ALL old data unconditionally
+  ['ccs_instructors','ccs_participants','ccs_users','ccs_events','ccs_adjustments',
+   'ccs_mileage','ccs_notifications','ccs_attendance','ccs_checkins','ccs_sup_meetings',
+   'ccs_audit','ccs_seeded','ccs_seeded_v2','ccs_seeded_v3','ccs_attempts','ccs_pwd_migrated'].forEach(k=>localStorage.removeItem(k));
   const supervisors=[
     {id:'sup1',active:true,agency:'ALTA',role:'Supervisor',name:'Maria Gonzalez',phone:'916-555-0101',officePhone:'916-555-0200',address:'Sacramento, CA 95814',managedInstructors:['ins1','ins2'],availability:{Mon:['8am-12pm','12pm-4pm'],Tue:['8am-12pm','12pm-4pm'],Wed:['8am-12pm'],Thu:['8am-12pm','12pm-4pm'],Fri:['8am-12pm']}},
     {id:'sup2',active:true,agency:'VMRC',role:'Supervisor',name:'James Carter',phone:'209-555-0102',officePhone:'209-555-0201',address:'Stockton, CA 95202',managedInstructors:['ins3'],availability:{Mon:['8am-12pm','12pm-4pm'],Tue:['8am-12pm'],Wed:['8am-12pm','12pm-4pm'],Thu:['8am-12pm'],Fri:['8am-12pm','12pm-4pm']}},
   ];
   const instructors=[
-    {id:'ins1',active:true,agency:'ALTA',role:'Instructor',name:'David Park',phone:'916-555-0201',supervisorId:'sup1',maxWeeklyHrs:40,address:'Elk Grove, CA 95758',availability:{Mon:['8am-12pm','12pm-4pm'],Tue:['8am-12pm','12pm-4pm'],Wed:['8am-12pm','12pm-4pm'],Thu:['8am-12pm','12pm-4pm'],Fri:['8am-12pm','12pm-4pm']}},
-    {id:'ins2',active:true,agency:'ALTA',role:'Instructor',name:'Sarah Johnson',phone:'916-555-0202',supervisorId:'sup1',maxWeeklyHrs:40,address:'Galt, CA 95632',availability:{Mon:['8am-12pm','12pm-4pm'],Tue:['8am-12pm'],Wed:['8am-12pm','12pm-4pm'],Thu:['8am-12pm','12pm-4pm'],Fri:['8am-12pm']}},
-    {id:'ins3',active:true,agency:'VMRC',role:'Instructor',name:'Michael Torres',phone:'209-555-0203',supervisorId:'sup2',maxWeeklyHrs:40,address:'Lodi, CA 95240',availability:{Mon:['8am-12pm','12pm-4pm'],Tue:['8am-12pm','12pm-4pm'],Wed:['8am-12pm'],Thu:['8am-12pm','12pm-4pm'],Fri:['8am-12pm','12pm-4pm']}},
+    {id:'ins1',active:true,agency:'ALTA',role:'Instructor',name:'David Park',phone:'916-555-0201',officePhone:'916-555-0100',supervisorId:'sup1',maxWeeklyHrs:40,address:'Elk Grove, CA 95758',availability:{Mon:['8am-12pm','12pm-4pm'],Tue:['8am-12pm','12pm-4pm'],Wed:['8am-12pm','12pm-4pm'],Thu:['8am-12pm','12pm-4pm'],Fri:['8am-12pm','12pm-4pm']}},
+    {id:'ins2',active:true,agency:'ALTA',role:'Instructor',name:'Sarah Johnson',phone:'916-555-0202',officePhone:'916-555-0100',supervisorId:'sup1',maxWeeklyHrs:40,address:'Galt, CA 95632',availability:{Mon:['8am-12pm','12pm-4pm'],Tue:['8am-12pm'],Wed:['8am-12pm','12pm-4pm'],Thu:['8am-12pm','12pm-4pm'],Fri:['8am-12pm']}},
+    {id:'ins3',active:true,agency:'VMRC',role:'Instructor',name:'Michael Torres',phone:'209-555-0203',officePhone:'209-555-0100',supervisorId:'sup2',maxWeeklyHrs:40,address:'Lodi, CA 95240',availability:{Mon:['8am-12pm','12pm-4pm'],Tue:['8am-12pm','12pm-4pm'],Wed:['8am-12pm'],Thu:['8am-12pm','12pm-4pm'],Fri:['8am-12pm','12pm-4pm']}},
   ];
   const participants=[
-    {id:'p1',active:true,agency:'ALTA',lastName:'Williams',firstName:'James',uci:'ALTA-001',phone:'916-555-1001',medical:['Autism'],goals:['Learn to cook','Use public transit','Make friends'],locations:[{id:'l1',label:'Home',address:'Elk Grove, CA 95758',lat:38.4088,lng:-121.3716}],assignedInstructor:'ins1',maxHrsMonth:100,maxHrsWeek:25,posStart:'2025-01-01',notes:'',schedule:{Mon:{a:{start:'09:00',end:'12:00',locs:['l1']},b:{start:'',end:'',locs:[]}},Wed:{a:{start:'09:00',end:'12:00',locs:['l1']},b:{start:'',end:'',locs:[]}},Fri:{a:{start:'10:00',end:'13:00',locs:['l1']},b:{start:'',end:'',locs:[]}}}},
-    {id:'p2',active:true,agency:'ALTA',lastName:'Brown',firstName:'Ashley',uci:'ALTA-002',phone:'916-555-1002',medical:['Down Syndrome'],goals:['Get a job','Cook independently','Social skills'],locations:[{id:'l2',label:'Home',address:'Sacramento, CA 95820',lat:38.5449,lng:-121.4594}],assignedInstructor:'ins1',maxHrsMonth:80,maxHrsWeek:20,posStart:'2025-02-01',notes:'',schedule:{Tue:{a:{start:'10:00',end:'13:00',locs:['l2']},b:{start:'',end:'',locs:[]}},Thu:{a:{start:'10:00',end:'13:00',locs:['l2']},b:{start:'',end:'',locs:[]}}}},
-    {id:'p3',active:true,agency:'VMRC',lastName:'Davis',firstName:'Robert',uci:'VMRC-001',phone:'209-555-1003',medical:['Intellectual Disability'],goals:['Learn budgeting','Exercise regularly','Learn to drive'],locations:[{id:'l3',label:'Home',address:'Lodi, CA 95240',lat:38.1302,lng:-121.2724}],assignedInstructor:'ins3',maxHrsMonth:120,maxHrsWeek:30,posStart:'2024-11-01',notes:'POS expires soon',schedule:{Mon:{a:{start:'08:00',end:'11:00',locs:['l3']},b:{start:'',end:'',locs:[]}},Tue:{a:{start:'08:00',end:'11:00',locs:['l3']},b:{start:'',end:'',locs:[]}},Thu:{a:{start:'08:00',end:'11:00',locs:['l3']},b:{start:'',end:'',locs:[]}}}},
-    {id:'p4',active:true,agency:'ALTA',lastName:'Martinez',firstName:'Elena',uci:'ALTA-003',phone:'916-555-1004',medical:['Cerebral Palsy'],goals:['Art therapy','Community outings','Self-advocacy'],locations:[{id:'l4',label:'Home',address:'Galt, CA 95632',lat:38.2546,lng:-121.2996}],assignedInstructor:'ins2',maxHrsMonth:60,maxHrsWeek:15,posStart:'2025-03-01',notes:'',schedule:{Wed:{a:{start:'13:00',end:'16:00',locs:['l4']},b:{start:'',end:'',locs:[]}},Fri:{a:{start:'13:00',end:'15:00',locs:['l4']},b:{start:'',end:'',locs:[]}}}},
+    // ── James Williams — demo participant login (jwilliams) ──
+    {
+      id:'p1',active:true,agency:'ALTA',
+      lastName:'Williams',firstName:'James',
+      uci:'ALTA-001',phone:'916-555-1001',
+      officePhone:'916-555-0100',
+      medical:['Autism Spectrum Disorder'],
+      goals:['Learn to cook simple meals','Use public transit independently','Build friendships in the community','Practice money management at the store','Improve time management'],
+      locations:[
+        {id:'l1a',label:'Home',address:'9201 Elk Grove Blvd, Elk Grove, CA 95758',lat:38.4088,lng:-121.3716},
+        {id:'l1b',label:'Elk Grove Library',address:'8900 Elk Grove Blvd, Elk Grove, CA 95624',lat:38.4066,lng:-121.3710},
+        {id:'l1c',label:'Raley\'s Grocery Store',address:'9257 Elk Grove Blvd, Elk Grove, CA 95758',lat:38.4075,lng:-121.3720},
+        {id:'l1d',label:'Elk Grove Regional Park',address:'9950 Elk Grove Blvd, Elk Grove, CA 95624',lat:38.4050,lng:-121.3800},
+        {id:'l1e',label:'CCS Office',address:'123 Main Street, Galt, CA 95632',lat:38.2546,lng:-121.2996},
+      ],
+      assignedInstructor:'ins1',
+      maxHrsMonth:100,maxHrsWeek:25,
+      posStart:'2025-01-01',
+      housingEnabled:true,
+      notes:'Thriving with consistent routine. Enjoys cooking and outdoor activities.',
+      schedule:{
+        Mon:{
+          a:{start:'09:00',end:'11:30',locs:['l1b']},
+          b:{start:'12:30',end:'14:30',locs:['l1c']}
+        },
+        Tue:{
+          a:{start:'09:00',end:'12:00',locs:['l1d']},
+          b:{start:'',end:'',locs:[]}
+        },
+        Wed:{
+          a:{start:'10:00',end:'12:00',locs:['l1a']},
+          b:{start:'13:00',end:'15:00',locs:['l1c']}
+        },
+        Thu:{
+          a:{start:'09:00',end:'11:30',locs:['l1b']},
+          b:{start:'',end:'',locs:[]}
+        },
+        Fri:{
+          a:{start:'10:00',end:'12:30',locs:['l1d']},
+          b:{start:'13:30',end:'15:00',locs:['l1e']}
+        },
+      },
+      favoriteLocations:[
+        {id:'fav1',locationId:'l1d',locationLabel:'Elk Grove Regional Park',address:'9950 Elk Grove Blvd, Elk Grove, CA 95624',reason:'I felt safe here',note:'I love the walking trail by the pond.',date:'2026-02-15',participantId:'p1',participantName:'James Williams'},
+        {id:'fav2',locationId:'l1b',locationLabel:'Elk Grove Library',address:'8900 Elk Grove Blvd, Elk Grove, CA 95624',reason:'Helps with my goals',note:'The quiet study room helps me focus.',date:'2026-02-20',participantId:'p1',participantName:'James Williams'},
+      ]
+    },
+    // ── Ashley Brown ──
+    {
+      id:'p2',active:true,agency:'ALTA',
+      lastName:'Brown',firstName:'Ashley',
+      uci:'ALTA-002',phone:'916-555-1002',
+      officePhone:'916-555-0100',
+      medical:['Down Syndrome'],
+      goals:['Get a part-time job','Cook independently','Improve social skills','Learn to use ATM','Join a community club'],
+      locations:[
+        {id:'l2a',label:'Home',address:'4521 Folsom Blvd, Sacramento, CA 95820',lat:38.5449,lng:-121.4294},
+        {id:'l2b',label:'Sacramento Public Library',address:'828 I St, Sacramento, CA 95814',lat:38.5816,lng:-121.4944},
+        {id:'l2c',label:'Safeway Grocery',address:'4900 Folsom Blvd, Sacramento, CA 95819',lat:38.5600,lng:-121.4400},
+        {id:'l2d',label:'WellSpace Health Day Program',address:'3500 5th Ave, Sacramento, CA 95817',lat:38.5500,lng:-121.4600},
+      ],
+      assignedInstructor:'ins1',
+      maxHrsMonth:80,maxHrsWeek:20,
+      posStart:'2025-02-01',notes:'Strong progress on job readiness skills.',
+      schedule:{
+        Tue:{
+          a:{start:'10:00',end:'12:30',locs:['l2c']},
+          b:{start:'',end:'',locs:[]}
+        },
+        Wed:{
+          a:{start:'09:30',end:'11:30',locs:['l2b']},
+          b:{start:'',end:'',locs:[]}
+        },
+        Thu:{
+          a:{start:'10:00',end:'13:00',locs:['l2d']},
+          b:{start:'',end:'',locs:[]}
+        },
+        Fri:{
+          a:{start:'09:00',end:'11:00',locs:['l2a']},
+          b:{start:'',end:'',locs:[]}
+        },
+      }
+    },
+    // ── Robert Davis ──
+    {
+      id:'p3',active:true,agency:'VMRC',
+      lastName:'Davis',firstName:'Robert',
+      uci:'VMRC-001',phone:'209-555-1003',
+      officePhone:'209-555-0100',
+      medical:['Intellectual Disability'],
+      goals:['Learn budgeting at the bank','Exercise 3x per week','Prepare for driver\'s license','Learn to read a bus schedule','Join a fitness class'],
+      locations:[
+        {id:'l3a',label:'Home',address:'412 N Sacramento St, Lodi, CA 95240',lat:38.1302,lng:-121.2724},
+        {id:'l3b',label:'Lodi Public Library',address:'201 W Locust St, Lodi, CA 95240',lat:38.1302,lng:-121.2750},
+        {id:'l3c',label:'Lodi Grape Bowl Park',address:'100 E Lockeford St, Lodi, CA 95240',lat:38.1320,lng:-121.2690},
+        {id:'l3d',label:'Raley\'s - Lodi',address:'2345 W Kettleman Ln, Lodi, CA 95242',lat:38.1410,lng:-121.3010},
+      ],
+      assignedInstructor:'ins3',
+      maxHrsMonth:120,maxHrsWeek:30,
+      posStart:'2024-11-01',notes:'POS renewal needed. Motivated participant.',
+      schedule:{
+        Mon:{
+          a:{start:'08:00',end:'10:30',locs:['l3c']},
+          b:{start:'11:00',end:'13:00',locs:['l3d']}
+        },
+        Tue:{
+          a:{start:'08:00',end:'11:00',locs:['l3b']},
+          b:{start:'',end:'',locs:[]}
+        },
+        Thu:{
+          a:{start:'08:00',end:'10:30',locs:['l3c']},
+          b:{start:'11:00',end:'13:00',locs:['l3a']}
+        },
+        Fri:{
+          a:{start:'09:00',end:'11:30',locs:['l3d']},
+          b:{start:'',end:'',locs:[]}
+        },
+      }
+    },
+    // ── Elena Martinez ──
+    {
+      id:'p4',active:true,agency:'ALTA',
+      lastName:'Martinez',firstName:'Elena',
+      uci:'ALTA-003',phone:'916-555-1004',
+      officePhone:'916-555-0100',
+      medical:['Cerebral Palsy'],
+      goals:['Art therapy twice a week','Community outings monthly','Self-advocacy training','Learn to order food independently','Build a daily routine'],
+      locations:[
+        {id:'l4a',label:'Home',address:'678 C St, Galt, CA 95632',lat:38.2546,lng:-121.2996},
+        {id:'l4b',label:'Galt Community Center',address:'400 Civic Dr, Galt, CA 95632',lat:38.2540,lng:-121.3010},
+        {id:'l4c',label:'Hobby Lobby - Elk Grove',address:'9230 E Stockton Blvd, Elk Grove, CA 95624',lat:38.4000,lng:-121.3600},
+        {id:'l4d',label:'McDonald\'s - Galt',address:'789 N Lincoln Way, Galt, CA 95632',lat:38.2560,lng:-121.2980},
+      ],
+      assignedInstructor:'ins2',
+      maxHrsMonth:60,maxHrsWeek:15,
+      posStart:'2025-03-01',notes:'Enjoys art and creative activities.',
+      schedule:{
+        Tue:{
+          a:{start:'13:00',end:'15:30',locs:['l4c']},
+          b:{start:'',end:'',locs:[]}
+        },
+        Wed:{
+          a:{start:'13:00',end:'15:30',locs:['l4b']},
+          b:{start:'',end:'',locs:[]}
+        },
+        Fri:{
+          a:{start:'11:00',end:'13:00',locs:['l4d']},
+          b:{start:'14:00',end:'15:30',locs:['l4a']}
+        },
+      }
+    },
   ];
   const users=[
     {id:'admin',username:'admin',password:'Admin@2025',role:'Admin',name:'Hanif Khan',agency:'ALTA'},
@@ -414,6 +565,7 @@ const seedData=()=>{
   const events=[
     {id:'e1',title:'ALTA Regional Training',date:'2026-03-15',time:'09:00',endTime:'12:00',type:'Training',agency:'ALTA',notes:'Mandatory for all ALTA staff'},
     {id:'e2',title:'CCS Staff Meeting',date:'2026-03-10',time:'14:00',endTime:'15:00',type:'Meeting',agency:'ALL',notes:''},
+    {id:'e3',title:'ILS Provider Network Meeting',date:'2026-03-20',time:'10:00',endTime:'12:00',type:'Meeting',agency:'ALL',notes:'Quarterly provider meeting at ACRC office'},
   ];
   LS.set('ccs_instructors',[...supervisors,...instructors]);
   LS.set('ccs_participants',participants);
@@ -426,7 +578,7 @@ const seedData=()=>{
   LS.set('ccs_checkins',[]);
   LS.set('ccs_sup_meetings',[]);
   LS.set('ccs_audit',[]);
-  LS.set('ccs_seeded',true);
+  LSraw.set('ccs_seeded_v4',true);
 };
 
 // ─── SVG Icons ───
@@ -790,8 +942,29 @@ const ParticipantDetailModal=({p,instructors,adjustments,onClose,onUpdate})=>{
           actInstr.map(i=>h('option',{key:i.id,value:i.id},i.name))
         )
       ),
+      h('div',{className:'form-group'},
+        h('label',{className:'form-label'},'Office Phone Number'),
+        h('input',{className:'form-input',value:p.officePhone||'',placeholder:'e.g. 916-555-0100',onChange:e=>{
+          const updated={...p,officePhone:e.target.value};
+          const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
+          LS.set('ccs_participants',all);onUpdate('participants',all);
+        }})
+      ),
+      h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',background:'var(--bg3)',borderRadius:10,marginBottom:12}},
+        h('div',null,
+          h('div',{style:{fontWeight:700,fontSize:13,display:'flex',alignItems:'center',gap:6}},'🏠 Housing Tab'),
+          h('div',{style:{fontSize:11,color:'var(--text3)',marginTop:2}},'Show Housing section in participant\'s app')
+        ),
+        h(Toggle,{on:!!p.housingEnabled,onChange:val=>{
+          const updated={...p,housingEnabled:val};
+          const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
+          LS.set('ccs_participants',all);onUpdate('participants',all);
+          auditLog('HOUSING_TOGGLE',`Housing tab ${val?'enabled':'disabled'} for ${p.firstName} ${p.lastName}`);
+        }})
+      ),
       p.medical&&p.medical.length>0&&h('div',null,h('div',{className:'form-label'},'Medical Notes'),p.medical.map(m=>h('span',{key:m,className:'chip'},m))),
-      p.phone&&h('div',{style:{marginTop:10,display:'flex',gap:8,alignItems:'center',fontSize:13}},h(Icon,{name:'phone',size:14}),p.phone),
+      p.phone&&h('div',{style:{marginTop:10,display:'flex',gap:8,alignItems:'center',fontSize:13}},h(Icon,{name:'phone',size:14}),'Cell: ',p.phone),
+      p.officePhone&&h('div',{style:{marginTop:6,display:'flex',gap:8,alignItems:'center',fontSize:13}},h(Icon,{name:'phone',size:14}),'Office: ',p.officePhone),
       h('div',{style:{marginTop:10,fontSize:12,color:'var(--text3)'}},`POS Start: ${p.posStart||'N/A'}`)
     ),
     tab==='schedule'&&h('div',null,
@@ -1737,11 +1910,26 @@ const PartHome=({currentUser,participants,instructors,onTabChange})=>{
         h('span',{style:{fontWeight:600}},formatTime(sched[slot].start),' – ',formatTime(sched[slot].end))
       ))
     ),
+    // Office phone card
+    p.officePhone&&h('div',{className:'card'},
+      h('div',{className:'section-title'},'CCS Office'),
+      h('div',{style:{display:'flex',alignItems:'center',gap:12}},
+        h('div',{style:{width:44,height:44,borderRadius:12,background:'rgba(59,130,246,0.15)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},h(Icon,{name:'phone',size:20,color:'var(--blue)'})),
+        h('div',null,
+          h('div',{style:{fontSize:11,color:'var(--text3)',marginBottom:2}},'Office Phone'),
+          h('a',{href:`tel:${p.officePhone}`,style:{fontWeight:700,fontSize:16,color:'var(--blue)',textDecoration:'none'}},p.officePhone)
+        )
+      )
+    ),
     instr&&h('div',{className:'card'},
       h('div',{className:'section-title'},'Your Instructor'),
       h('div',{style:{display:'flex',gap:12,alignItems:'center'}},
         h('div',{style:{width:48,height:48,borderRadius:'50%',background:'var(--blue)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:800,color:'#fff',flexShrink:0}},instr.name.charAt(0)),
-        h('div',null,h('div',{style:{fontWeight:700,fontSize:15}},instr.name),instr.phone&&h('div',{style:{fontSize:12,color:'var(--text2)',marginTop:2}},h(Icon,{name:'phone',size:12}),' ',instr.phone))
+        h('div',null,
+          h('div',{style:{fontWeight:700,fontSize:15}},instr.name),
+          instr.phone&&h('div',{style:{fontSize:12,color:'var(--text2)',marginTop:2,display:'flex',gap:4,alignItems:'center'}},h(Icon,{name:'phone',size:11}),' Cell: ',h('a',{href:`tel:${instr.phone}`,style:{color:'var(--blue)',textDecoration:'none'}},instr.phone)),
+          instr.officePhone&&h('div',{style:{fontSize:12,color:'var(--text2)',marginTop:2,display:'flex',gap:4,alignItems:'center'}},h(Icon,{name:'phone',size:11}),' Office: ',h('a',{href:`tel:${instr.officePhone}`,style:{color:'var(--blue)',textDecoration:'none'}},instr.officePhone))
+        )
       )
     ),
     h('div',{onClick:()=>onTabChange&&onTabChange(4),style:{background:'linear-gradient(135deg,#1e3a5f,#2563eb)',borderRadius:14,padding:16,display:'flex',alignItems:'center',gap:14,cursor:'pointer',marginTop:4,border:'none'}},
@@ -1755,22 +1943,203 @@ const PartHome=({currentUser,participants,instructors,onTabChange})=>{
   );
 };
 
-const PartSchedule=({currentUser,participants})=>{
+const PartSchedule=({currentUser,participants,onUpdate})=>{
   const p=participants.find(x=>x.id===currentUser.participantId)||participants[0];
   if(!p)return null;
+  const[openDay,setOpenDay]=useState(null);
+  const[showFavForm,setShowFavForm]=useState(null); // location object
+  const[favReason,setFavReason]=useState('');
+  const[favNote,setFavNote]=useState('');
+  const favorites=p.favoriteLocations||[];
+
+  const FAV_REASONS=['I felt safe here','Great community activity','Fun and enjoyable','Good food','Helps with my goals','I made friends here','Easy to get to','I want to go back','Other'];
+
+  const saveFavorite=()=>{
+    if(!showFavForm)return;
+    const fav={id:uid(),locationId:showFavForm.id,locationLabel:showFavForm.label,address:showFavForm.address,reason:favReason,note:favNote,date:todayStr(),participantId:p.id,participantName:`${p.firstName} ${p.lastName}`};
+    const updated={...p,favoriteLocations:[...favorites,fav]};
+    const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
+    LS.set('ccs_participants',all);onUpdate('participants',all);
+    setShowFavForm(null);setFavReason('');setFavNote('');
+  };
+
+  const removeFavorite=(favId)=>{
+    const updated={...p,favoriteLocations:favorites.filter(f=>f.id!==favId)};
+    const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
+    LS.set('ccs_participants',all);onUpdate('participants',all);
+  };
+
   return h('div',{className:'fade-up'},
-    h('div',{className:'section-title'},'Weekly Schedule'),
-    DAYS.map(d=>{
+    h('div',{style:{background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.2)',borderRadius:10,padding:'10px 14px',marginBottom:14,display:'flex',gap:8,alignItems:'center'}},
+      h('span',{style:{fontSize:18}},'👆'),
+      h('span',{style:{fontSize:13,color:'var(--blue)',fontWeight:600}},'Click any scheduled day to see times and locations')
+    ),
+
+    // Weekly schedule — expandable days
+    DAYS.map((d,di)=>{
       const s=p.schedule&&p.schedule[d];
-      return h('div',{key:d,className:'card-sm',style:{opacity:s&&(s.a?.start||s.b?.start)?1:0.5}},
-        h('div',{className:'row'},
-          h('div',{style:{fontWeight:700}},DAYS_FULL[DAYS.indexOf(d)]),
-          (s&&(s.a?.start||s.b?.start))?h('span',{className:'badge badge-blue'},'Scheduled'):h('span',{className:'badge badge-gray'},'Off')
+      const aStart=s&&s.a&&s.a.start&&s.a.start.length>0?s.a.start:null;
+      const bStart=s&&s.b&&s.b.start&&s.b.start.length>0?s.b.start:null;
+      const hasSession=!!(aStart||bStart);
+      const isOpen=openDay===d;
+      // Collect locations for this day
+      const dayLocs=[];
+      ['a','b'].forEach(slot=>{
+        if(s&&s[slot]&&s[slot].start){
+          (s[slot].locs||[]).forEach(locId=>{
+            const loc=(p.locations||[]).find(l=>l.id===locId);
+            if(loc&&!dayLocs.find(x=>x.id===loc.id))dayLocs.push(loc);
+          });
+        }
+      });
+      const displayLocs=dayLocs.length>0?dayLocs:(p.locations||[]);
+
+      return h('div',{key:d,style:{marginBottom:8}},
+        h('div',{
+          onClick:()=>{if(hasSession)setOpenDay(isOpen?null:d);},
+          style:{
+            background:isOpen?'rgba(59,130,246,0.08)':'var(--card)',
+            border:`2px solid ${isOpen?'var(--blue)':'var(--border)'}`,
+            borderRadius:isOpen?'12px 12px 0 0':12,
+            padding:'14px 16px',
+            cursor:hasSession?'pointer':'not-allowed',
+            opacity:hasSession?1:0.4,
+            display:'flex',alignItems:'center',justifyContent:'space-between',
+            userSelect:'none',
+            transition:'all 0.2s'
+          }
+        },
+          h('div',{style:{display:'flex',alignItems:'center',gap:12}},
+            h('div',{style:{
+              width:44,height:44,borderRadius:10,
+              background:isOpen?'var(--blue)':hasSession?'rgba(59,130,246,0.15)':'var(--bg3)',
+              display:'flex',alignItems:'center',justifyContent:'center',
+              transition:'background 0.2s',flexShrink:0
+            }},
+              h('span',{style:{fontSize:13,fontWeight:800,color:isOpen?'#fff':hasSession?'var(--blue)':'var(--text3)'}},d)
+            ),
+            h('div',null,
+              h('div',{style:{fontWeight:700,fontSize:15}},DAYS_FULL[di]),
+              hasSession
+                ?h('div',{style:{fontSize:12,color:'var(--text3)',marginTop:2}},
+                    [aStart&&`${formatTime(aStart)}–${formatTime(s.a.end)}`,bStart&&`${formatTime(bStart)}–${formatTime(s.b.end)}`].filter(Boolean).join('  ·  ')
+                  )
+                :h('div',{style:{fontSize:12,color:'var(--text3)',marginTop:2}},'No session')
+            )
+          ),
+          hasSession&&h('div',{style:{display:'flex',alignItems:'center',gap:6}},
+            !isOpen&&h('span',{style:{fontSize:11,color:'var(--blue)',fontWeight:600}},displayLocs.length,' location'+(displayLocs.length!==1?'s':'')),
+            h('span',{style:{
+              color:'var(--blue)',fontSize:22,fontWeight:300,
+              display:'inline-block',
+              transform:isOpen?'rotate(90deg)':'rotate(0deg)',
+              transition:'transform 0.2s'
+            }},'›')
+          )
         ),
-        s&&s.a?.start&&h('div',{style:{fontSize:12,color:'var(--text2)',marginTop:4}},`A: ${formatTime(s.a.start)} – ${formatTime(s.a.end)}`),
-        s&&s.b?.start&&h('div',{style:{fontSize:12,color:'var(--text2)',marginTop:4}},`B: ${formatTime(s.b.start)} – ${formatTime(s.b.end)}`)
+
+        // Expanded panel
+        isOpen&&h('div',{style:{
+          background:'var(--bg2)',
+          border:'2px solid var(--blue)',
+          borderTop:'none',
+          borderRadius:'0 0 12px 12px',
+          padding:16
+        }},
+          // Time slots
+          h('div',{style:{marginBottom:14}},
+            h('div',{style:{fontSize:11,fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:0.8,marginBottom:8}},'⏰ Session Times'),
+            aStart&&h('div',{style:{display:'flex',justifyContent:'space-between',padding:'10px 12px',background:'var(--bg3)',borderRadius:8,marginBottom:6}},
+              h('span',{style:{fontSize:13,color:'var(--text2)'}},'Slot A'),
+              h('span',{style:{fontWeight:700,fontSize:14}},formatTime(aStart),' – ',formatTime(s.a.end))
+            ),
+            bStart&&h('div',{style:{display:'flex',justifyContent:'space-between',padding:'10px 12px',background:'var(--bg3)',borderRadius:8}},
+              h('span',{style:{fontSize:13,color:'var(--text2)'}},'Slot B'),
+              h('span',{style:{fontWeight:700,fontSize:14}},formatTime(bStart),' – ',formatTime(s.b.end))
+            )
+          ),
+          // Locations
+          displayLocs.length>0&&h('div',null,
+            h('div',{style:{fontSize:11,fontWeight:700,color:'var(--text3)',textTransform:'uppercase',letterSpacing:0.8,marginBottom:8}},'📍 Where You\'re Going'),
+            displayLocs.map(loc=>{
+              const alreadyFaved=favorites.some(f=>f.locationId===loc.id);
+              return h('div',{key:loc.id,style:{background:'var(--bg3)',borderRadius:10,padding:14,marginBottom:8}},
+                h('div',{style:{display:'flex',gap:10,alignItems:'flex-start'}},
+                  h('div',{style:{width:36,height:36,borderRadius:8,background:'rgba(59,130,246,0.15)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},
+                    h(Icon,{name:'location',size:16,color:'var(--blue)'})
+                  ),
+                  h('div',{style:{flex:1}},
+                    h('div',{style:{fontWeight:700,fontSize:14}},loc.label),
+                    h('div',{style:{fontSize:12,color:'var(--text2)',marginTop:2,lineHeight:1.5}},loc.address),
+                    h('a',{
+                      href:`https://maps.google.com/?q=${encodeURIComponent(loc.address)}`,
+                      target:'_blank',
+                      style:{fontSize:12,color:'var(--blue)',display:'inline-flex',alignItems:'center',gap:4,marginTop:6,textDecoration:'none',padding:'4px 8px',background:'rgba(59,130,246,0.1)',borderRadius:6}
+                    },h(Icon,{name:'map',size:12}),' Open in Google Maps')
+                  ),
+                  h('button',{
+                    onClick:(e)=>{e.stopPropagation();if(!alreadyFaved){setShowFavForm(loc);setFavReason('');setFavNote('');}},
+                    title:alreadyFaved?'Already saved as favorite':'Save as favorite',
+                    style:{background:'none',border:'none',cursor:alreadyFaved?'default':'pointer',fontSize:24,lineHeight:1,padding:4,flexShrink:0}
+                  },alreadyFaved?'⭐':'☆')
+                )
+              );
+            })
+          )
+        )
       );
-    })
+    }),
+
+    // Favorite Locations Section
+    h('div',{style:{marginTop:20}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:12}},
+        h('span',{style:{fontSize:18}},'⭐'),
+        h('div',{className:'section-title',style:{margin:0}},'My Favorite Places')
+      ),
+      favorites.length===0
+        ?h('div',{style:{background:'var(--card)',border:'1px solid var(--border)',borderRadius:12,padding:20,textAlign:'center'}},
+            h('div',{style:{fontSize:32,marginBottom:8}},'☆'),
+            h('div',{style:{fontSize:13,color:'var(--text3)'}},'Tap the ☆ star on any location to save it as a favorite')
+          )
+        :favorites.map(f=>h('div',{key:f.id,className:'card-sm',style:{marginBottom:8}},
+            h('div',{style:{display:'flex',gap:10,alignItems:'flex-start'}},
+              h('span',{style:{fontSize:22,flexShrink:0}},'⭐'),
+              h('div',{style:{flex:1}},
+                h('div',{style:{fontWeight:700,fontSize:13}},f.locationLabel),
+                h('div',{style:{fontSize:11,color:'var(--text3)',marginTop:1}},f.address),
+                h('div',{style:{fontSize:12,color:'var(--blue)',marginTop:4}},f.reason),
+                f.note&&h('div',{style:{fontSize:11,color:'var(--text2)',marginTop:2,fontStyle:'italic'}},'"',f.note,'"'),
+                h('div',{style:{fontSize:10,color:'var(--text3)',marginTop:4}},f.date)
+              ),
+              h('button',{onClick:()=>removeFavorite(f.id),style:{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',padding:4}},h(Icon,{name:'x',size:14}))
+            )
+          ))
+    ),
+
+    // Add Favorite Modal
+    showFavForm&&h(Modal,{open:true,onClose:()=>setShowFavForm(null),title:'Add to Favorites ⭐'},
+      h('div',{style:{display:'flex',gap:10,alignItems:'center',padding:'10px 12px',background:'var(--bg3)',borderRadius:10,marginBottom:14}},
+        h(Icon,{name:'location',size:16,color:'var(--blue)'}),
+        h('div',null,
+          h('div',{style:{fontWeight:700,fontSize:13}},showFavForm.label),
+          h('div',{style:{fontSize:12,color:'var(--text2)'}},showFavForm.address)
+        )
+      ),
+      h('div',{style:{marginBottom:14}},
+        h('div',{className:'form-label'},'Why do you like this place?'),
+        FAV_REASONS.map(r=>h('div',{key:r,onClick:()=>setFavReason(r),style:{padding:'10px 12px',borderRadius:8,marginBottom:6,cursor:'pointer',border:`2px solid ${favReason===r?'var(--blue)':'var(--border)'}`,background:favReason===r?'rgba(59,130,246,0.1)':'var(--bg3)',fontSize:13,transition:'all 0.15s'}},
+          h('span',{style:{marginRight:8}},favReason===r?'✅':'⬜'),r
+        ))
+      ),
+      h('div',{className:'form-group'},
+        h('label',{className:'form-label'},'Anything else you want to say? (optional)'),
+        h('textarea',{className:'form-input',value:favNote,onChange:e=>setFavNote(e.target.value),rows:2,placeholder:'e.g. The staff were really nice…'})
+      ),
+      h('div',{style:{display:'flex',gap:8,marginTop:8}},
+        h('button',{className:'btn btn-ghost',style:{flex:1},onClick:()=>setShowFavForm(null)},'Cancel'),
+        h('button',{className:'btn btn-primary',style:{flex:2},disabled:!favReason,onClick:saveFavorite},'⭐ Save Favorite')
+      )
+    )
   );
 };
 
@@ -1910,6 +2279,68 @@ const PartInstructor=({currentUser,participants,instructors,notifications,onUpda
       h('div',{className:'form-group'},h('label',{className:'form-label'},'Reason for request'),h('textarea',{className:'form-input',value:reason,onChange:e=>setReason(e.target.value),rows:3,placeholder:'Please explain why you would like a different instructor…'})),
       h('button',{className:'btn btn-primary btn-block',disabled:!reason.trim(),onClick:request},'Submit Request')
     ):h('div',{className:'alert alert-green'},h(Icon,{name:'check',size:16}),'Your request has been submitted. Your supervisor will follow up.')
+  );
+};
+
+// ─── Admin Favorite Locations ───
+const AdminFavorites=({participants})=>{
+  const[search,setSearch]=useState('');
+  const[filter,setFilter]=useState('ALL');
+
+  // Gather all favorites across all participants
+  const allFavs=[];
+  participants.forEach(p=>{
+    (p.favoriteLocations||[]).forEach(f=>{
+      allFavs.push({...f,participantId:p.id,participantName:`${p.firstName} ${p.lastName}`,agency:p.agency});
+    });
+  });
+
+  const filtered=allFavs.filter(f=>
+    (filter==='ALL'||f.agency===filter)&&
+    (`${f.participantName} ${f.locationLabel} ${f.address} ${f.reason}`.toLowerCase().includes(search.toLowerCase()))
+  ).sort((a,b)=>b.date>a.date?1:-1);
+
+  // Group by location for insights
+  const locationCounts={};
+  allFavs.forEach(f=>{const k=f.locationLabel+':'+f.address;locationCounts[k]=(locationCounts[k]||0)+1;});
+  const topLocs=Object.entries(locationCounts).sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+  return h('div',{className:'fade-up'},
+    // Top locations insight
+    topLocs.length>0&&h('div',{className:'card',style:{marginBottom:16}},
+      h('div',{className:'section-title',style:{marginBottom:10}},'⭐ Most Popular Locations'),
+      topLocs.map(([loc,count],i)=>h('div',{key:i,style:{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:i<topLocs.length-1?'1px solid var(--border)':'none'}},
+        h('div',null,
+          h('div',{style:{fontWeight:600,fontSize:13}},loc.split(':')[0]),
+          h('div',{style:{fontSize:11,color:'var(--text3)'}},loc.split(':')[1])
+        ),
+        h('span',{className:'badge badge-blue'},`${count} ⭐`)
+      ))
+    ),
+    h('div',{className:'search-wrap'},
+      h('span',{className:'search-icon'},h(Icon,{name:'search',size:16})),
+      h('input',{className:'form-input',value:search,onChange:e=>setSearch(e.target.value),placeholder:'Search favorites…'})
+    ),
+    h('div',{style:{display:'flex',gap:8,marginBottom:14}},
+      ['ALL','ALTA','VMRC'].map(ag=>h('button',{key:ag,className:`btn btn-sm${filter===ag?' btn-primary':' btn-ghost'}`,onClick:()=>setFilter(ag)},ag))
+    ),
+    h('div',{style:{fontSize:12,color:'var(--text3)',marginBottom:12}},`${filtered.length} favorite${filtered.length!==1?'s':''} recorded`),
+    filtered.length===0?h('div',{className:'empty'},h('div',{className:'empty-icon'},'⭐'),'No favorites recorded yet'):
+    filtered.map((f,i)=>h('div',{key:f.id||i,className:'card-sm'},
+      h('div',{style:{display:'flex',gap:10,alignItems:'flex-start'}},
+        h('span',{style:{fontSize:22,flexShrink:0}},'⭐'),
+        h('div',{style:{flex:1}},
+          h('div',{className:'row',style:{marginBottom:4}},
+            h('div',{style:{fontWeight:700,fontSize:13}},f.locationLabel),
+            h('span',{className:`badge badge-${f.agency==='ALTA'?'blue':'purple'}`,style:{fontSize:10}},f.agency)
+          ),
+          h('div',{style:{fontSize:11,color:'var(--text3)',marginBottom:4}},h(Icon,{name:'location',size:11}),' ',f.address),
+          h('div',{style:{fontSize:12,color:'var(--text)'}},h('strong',null,f.participantName),' — ',f.reason),
+          f.note&&h('div',{style:{fontSize:11,color:'var(--text2)',marginTop:3,fontStyle:'italic'}},'"',f.note,'"'),
+          h('div',{style:{fontSize:10,color:'var(--text3)',marginTop:4}},f.date)
+        )
+      )
+    ))
   );
 };
 
@@ -2067,6 +2498,280 @@ const AdminSecurity=({users,onUpdate})=>{
           )
         )
       ))
+    )
+  );
+};
+
+// ─── PARTICIPANT HOUSING ───
+const PartHousing=({currentUser,participants,onUpdate})=>{
+  const p=participants.find(x=>x.id===currentUser.participantId)||participants[0];
+  if(!p)return null;
+
+  const[tab,setTab]=useState('checklist');
+  const housing=p.housing||{};
+  const checkedItems=housing.checkedItems||{};
+  const prefs=housing.prefs||{};
+
+  const saveChecked=(key,val)=>{
+    const updated={...p,housing:{...housing,checkedItems:{...checkedItems,[key]:val}}};
+    const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
+    LS.set('ccs_participants',all);onUpdate('participants',all);
+  };
+  const savePref=(key,val)=>{
+    const updated={...p,housing:{...housing,prefs:{...prefs,[key]:val}}};
+    const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
+    LS.set('ccs_participants',all);onUpdate('participants',all);
+  };
+
+  // ── Checklist data ──
+  const checklistSections=[
+    {
+      emoji:'💰',title:'Money & Budget',color:'var(--green)',
+      items:[
+        {id:'budget1',text:'I know how much money I get each month (SSI, SSDI, paycheck)'},
+        {id:'budget2',text:'I know how much rent I can afford (usually no more than 1/3 of my income)'},
+        {id:'budget3',text:'I have a savings account'},
+        {id:'budget4',text:'I have saved at least 1–2 months of rent for a deposit'},
+        {id:'budget5',text:'I know how to pay bills (electricity, internet, phone)'},
+        {id:'budget6',text:'I have a monthly budget plan'},
+      ]
+    },
+    {
+      emoji:'📄',title:'Paperwork & IDs',color:'var(--blue)',
+      items:[
+        {id:'paper1',text:'I have a government photo ID (driver\'s license or state ID)'},
+        {id:'paper2',text:'I have my Social Security card'},
+        {id:'paper3',text:'I have my birth certificate'},
+        {id:'paper4',text:'I have proof of income (letter from SSA or pay stubs)'},
+        {id:'paper5',text:'I have references (people who can say good things about me)'},
+        {id:'paper6',text:'I know my credit score or am working to build credit'},
+      ]
+    },
+    {
+      emoji:'🏠',title:'Finding a Place',color:'var(--purple)',
+      items:[
+        {id:'find1',text:'I have searched online listings (Craigslist, Zillow, Facebook Marketplace)'},
+        {id:'find2',text:'I have asked my caseworker or regional center about housing help'},
+        {id:'find3',text:'I know about Section 8 / HUD housing vouchers'},
+        {id:'find4',text:'I have visited at least one place in person'},
+        {id:'find5',text:'I have read a rental agreement or lease before'},
+        {id:'find6',text:'I know I can ask someone I trust to help me read a lease'},
+        {id:'find7',text:'I know what to look for when touring an apartment (safety, cleanliness, locks)'},
+      ]
+    },
+    {
+      emoji:'🛒',title:'Moving In',color:'var(--orange)',
+      items:[
+        {id:'move1',text:'I know how to set up electricity and internet in my name'},
+        {id:'move2',text:'I know what basic furniture and supplies I need'},
+        {id:'move3',text:'I know how to do laundry'},
+        {id:'move4',text:'I know how to keep my home clean and organized'},
+        {id:'move5',text:'I know how to cook basic meals for myself'},
+        {id:'move6',text:'I know what to do in an emergency (fire, medical)'},
+        {id:'move7',text:'I have a support person I can call if I need help at home'},
+      ]
+    },
+    {
+      emoji:'🤝',title:'Living with Others (If Applicable)',color:'var(--teal)',
+      items:[
+        {id:'room1',text:'I know how to talk about house rules with roommates'},
+        {id:'room2',text:'I know how to split bills fairly'},
+        {id:'room3',text:'I know how to handle disagreements calmly'},
+        {id:'room4',text:'I understand what a roommate agreement is'},
+        {id:'room5',text:'I know I can say no to living with someone who makes me uncomfortable'},
+      ]
+    },
+    {
+      emoji:'🔑',title:'My Rights as a Renter',color:'var(--yellow)',
+      items:[
+        {id:'rights1',text:'I know my landlord must give notice before entering my home'},
+        {id:'rights2',text:'I know I can ask for repairs in writing'},
+        {id:'rights3',text:'I know what to do if I feel unsafe where I live'},
+        {id:'rights4',text:'I know I have disability rights (reasonable accommodations)'},
+        {id:'rights5',text:'I know who to call if I have a problem with my landlord'},
+      ]
+    },
+  ];
+
+  const totalItems=checklistSections.reduce((s,sec)=>s+sec.items.length,0);
+  const doneCount=Object.values(checkedItems).filter(Boolean).length;
+  const pct=totalItems>0?Math.round((doneCount/totalItems)*100):0;
+
+  // ── Preferences data ──
+  const housingTypes=[
+    {id:'ht_own',emoji:'🏠',label:'My Own Apartment'},
+    {id:'ht_room',emoji:'🚪',label:'Rent a Room in a House'},
+    {id:'ht_roommates',emoji:'👥',label:'Apartment with Roommates'},
+    {id:'ht_board',emoji:'🏡',label:'Board & Care Home'},
+    {id:'ht_shared',emoji:'🤝',label:'Shared Living Program'},
+    {id:'ht_family',emoji:'👨‍👩‍👧',label:'Stay with Family (Longer Term)'},
+  ];
+
+  const roommateCount=[
+    {id:'rc_0',label:'No Roommates — I want to live alone'},
+    {id:'rc_1',label:'1 Roommate'},
+    {id:'rc_2',label:'2 Roommates'},
+    {id:'rc_3',label:'3 Roommates'},
+    {id:'rc_4',label:'4–5 Roommates'},
+  ];
+
+  const roommatePrefs=[
+    {id:'rp_nosmoking',emoji:'🚭',label:'Non-Smoking'},
+    {id:'rp_smoking',emoji:'🚬',label:'Smoking OK'},
+    {id:'rp_nopets',emoji:'🐾',label:'No Pets'},
+    {id:'rp_petsok',emoji:'🐶',label:'Pets OK'},
+    {id:'rp_quiet',emoji:'🤫',label:'Quiet Household'},
+    {id:'rp_social',emoji:'🎉',label:'Social / Active Household'},
+    {id:'rp_samegender',emoji:'🚹',label:'Same Gender Preferred'},
+    {id:'rp_anygender',emoji:'🧑',label:'Any Gender OK'},
+    {id:'rp_sober',emoji:'🚫',label:'Sober / No Alcohol'},
+    {id:'rp_clean',emoji:'🧹',label:'Very Clean / Organized'},
+    {id:'rp_schedule',emoji:'📅',label:'Similar Daily Schedule'},
+    {id:'rp_disability',emoji:'♿',label:'OK with Disabilities'},
+  ];
+
+  const locationPrefs=[
+    {id:'lp_bus',emoji:'🚌',label:'Near Bus/Transit'},
+    {id:'lp_work',emoji:'💼',label:'Near Work or Day Program'},
+    {id:'lp_grocery',emoji:'🛒',label:'Near Grocery Store'},
+    {id:'lp_quiet',emoji:'🌳',label:'Quiet Neighborhood'},
+    {id:'lp_downtown',emoji:'🏙️',label:'Close to Downtown'},
+    {id:'lp_family',emoji:'👨‍👩‍👧',label:'Near Family'},
+    {id:'lp_onestory',emoji:'🏠',label:'Ground Floor / No Stairs'},
+    {id:'lp_accessible',emoji:'♿',label:'Wheelchair Accessible'},
+  ];
+
+  const CheckItem=({id,text})=>{
+    const done=!!checkedItems[id];
+    return h('div',{
+      onClick:()=>saveChecked(id,!done),
+      style:{display:'flex',gap:12,alignItems:'flex-start',padding:'11px 12px',borderRadius:10,cursor:'pointer',background:done?'rgba(34,197,94,0.08)':'var(--bg3)',border:`1px solid ${done?'rgba(34,197,94,0.3)':'transparent'}`,marginBottom:6,transition:'all 0.15s',userSelect:'none'}
+    },
+      h('div',{style:{width:24,height:24,borderRadius:6,border:`2px solid ${done?'var(--green)':'var(--text3)'}`,background:done?'var(--green)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,marginTop:1,transition:'all 0.15s'}},
+        done&&h('span',{style:{color:'#fff',fontSize:14,fontWeight:900,lineHeight:1}},'✓')
+      ),
+      h('span',{style:{fontSize:13,lineHeight:1.5,color:done?'var(--text2)':'var(--text)',textDecoration:done?'line-through':'none'}},text)
+    );
+  };
+
+  const TogglePill=({id,emoji,label,selected,onToggle})=>h('div',{
+    onClick:()=>onToggle(id,!selected),
+    style:{display:'inline-flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:20,cursor:'pointer',border:`2px solid ${selected?'var(--blue)':'var(--border)'}`,background:selected?'rgba(59,130,246,0.1)':'var(--bg3)',marginRight:8,marginBottom:8,userSelect:'none',transition:'all 0.15s',fontSize:13,fontWeight:selected?700:400,color:selected?'var(--blue)':'var(--text2)'}
+  },emoji&&h('span',null,emoji,' '),label,selected&&h('span',{style:{marginLeft:4,fontSize:12}},'✓'));
+
+  return h('div',{className:'fade-up'},
+    // Header
+    h('div',{style:{background:'linear-gradient(135deg,#1a2e4a,#2563eb)',borderRadius:16,padding:20,marginBottom:16,textAlign:'center'}},
+      h('div',{style:{fontSize:40,marginBottom:6}},'🏠'),
+      h('div',{style:{fontWeight:800,fontSize:20,color:'#fff'}},'My Housing Journey'),
+      h('div',{style:{fontSize:12,color:'rgba(255,255,255,0.75)',marginTop:4,lineHeight:1.5}},'Getting your own place is a big step. Let\'s get you ready!')
+    ),
+
+    // Sub-tabs
+    h('div',{style:{display:'flex',gap:0,marginBottom:16,background:'var(--bg2)',borderRadius:12,padding:4,border:'1px solid var(--border)'}},
+      [['checklist','✅ My Checklist'],['prefs','🎯 My Preferences']].map(([t,label])=>
+        h('button',{key:t,onClick:()=>setTab(t),style:{flex:1,padding:'10px 8px',borderRadius:10,border:'none',cursor:'pointer',fontWeight:700,fontSize:13,background:tab===t?'var(--blue)':'transparent',color:tab===t?'#fff':'var(--text3)',transition:'all 0.15s'}},label)
+      )
+    ),
+
+    // ── CHECKLIST TAB ──
+    tab==='checklist'&&h('div',null,
+      // Progress bar
+      h('div',{className:'card',style:{marginBottom:16}},
+        h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}},
+          h('div',{style:{fontWeight:700,fontSize:14}},'Your Progress'),
+          h('div',{style:{fontWeight:800,fontSize:20,color:pct>=80?'var(--green)':pct>=40?'var(--yellow)':'var(--blue)'}},`${pct}%`)
+        ),
+        h('div',{style:{height:10,background:'var(--bg3)',borderRadius:10,overflow:'hidden'}},
+          h('div',{style:{height:'100%',width:`${pct}%`,background:`linear-gradient(90deg,var(--blue),${pct>=80?'var(--green)':'var(--blue)'})`,borderRadius:10,transition:'width 0.4s'}})
+        ),
+        h('div',{style:{fontSize:11,color:'var(--text3)',marginTop:6}},`${doneCount} of ${totalItems} steps completed`)
+      ),
+      checklistSections.map(sec=>
+        h('div',{key:sec.id||sec.title,className:'card',style:{marginBottom:12}},
+          h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:12}},
+            h('span',{style:{fontSize:24}}),
+            h('div',{style:{fontWeight:800,fontSize:15,color:sec.color}},sec.emoji,' ',sec.title)
+          ),
+          sec.items.map(item=>h(CheckItem,{key:item.id,id:item.id,text:item.text}))
+        )
+      )
+    ),
+
+    // ── PREFERENCES TAB ──
+    tab==='prefs'&&h('div',null,
+      // Housing type
+      h('div',{className:'card',style:{marginBottom:12}},
+        h('div',{style:{fontWeight:800,fontSize:15,marginBottom:4}},'🏠 What kind of housing do I want?'),
+        h('div',{style:{fontSize:12,color:'var(--text3)',marginBottom:12}},'Pick all that sound good to you'),
+        h('div',{style:{display:'flex',flexWrap:'wrap'}},
+          housingTypes.map(ht=>h(TogglePill,{key:ht.id,id:ht.id,emoji:ht.emoji,label:ht.label,selected:!!(prefs[ht.id]),onToggle:(id,val)=>savePref(id,val)}))
+        )
+      ),
+      // Roommate count
+      h('div',{className:'card',style:{marginBottom:12}},
+        h('div',{style:{fontWeight:800,fontSize:15,marginBottom:4}},'👥 How many roommates do I want?'),
+        h('div',{style:{fontSize:12,color:'var(--text3)',marginBottom:12}},'Pick one'),
+        roommateCount.map(rc=>h('div',{
+          key:rc.id,
+          onClick:()=>{
+            // Single select — clear others
+            const newPrefs={...prefs};
+            roommateCount.forEach(x=>{newPrefs[x.id]=false;});
+            newPrefs[rc.id]=true;
+            const updated={...p,housing:{...housing,prefs:newPrefs}};
+            const all=LS.get('ccs_participants',[]).map(x=>x.id===p.id?updated:x);
+            LS.set('ccs_participants',all);onUpdate('participants',all);
+          },
+          style:{display:'flex',alignItems:'center',gap:12,padding:'11px 14px',borderRadius:10,cursor:'pointer',border:`2px solid ${prefs[rc.id]?'var(--blue)':'var(--border)'}`,background:prefs[rc.id]?'rgba(59,130,246,0.08)':'var(--bg3)',marginBottom:8,transition:'all 0.15s',userSelect:'none'}
+        },
+          h('div',{style:{width:20,height:20,borderRadius:'50%',border:`2px solid ${prefs[rc.id]?'var(--blue)':'var(--text3)'}`,background:prefs[rc.id]?'var(--blue)':'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}},
+            prefs[rc.id]&&h('div',{style:{width:8,height:8,borderRadius:'50%',background:'#fff'}})
+          ),
+          h('span',{style:{fontSize:13,fontWeight:prefs[rc.id]?700:400,color:prefs[rc.id]?'var(--blue)':'var(--text)'}},rc.label)
+        ))
+      ),
+      // Roommate preferences
+      h('div',{className:'card',style:{marginBottom:12}},
+        h('div',{style:{fontWeight:800,fontSize:15,marginBottom:4}},'✅ What do I want in a roommate?'),
+        h('div',{style:{fontSize:12,color:'var(--text3)',marginBottom:12}},'Pick everything that matters to you'),
+        h('div',{style:{display:'flex',flexWrap:'wrap'}},
+          roommatePrefs.map(rp=>h(TogglePill,{key:rp.id,id:rp.id,emoji:rp.emoji,label:rp.label,selected:!!(prefs[rp.id]),onToggle:(id,val)=>savePref(id,val)}))
+        )
+      ),
+      // Location preferences
+      h('div',{className:'card',style:{marginBottom:12}},
+        h('div',{style:{fontWeight:800,fontSize:15,marginBottom:4}},'📍 Where do I want to live?'),
+        h('div',{style:{fontSize:12,color:'var(--text3)',marginBottom:12}},'Pick everything that\'s important to you'),
+        h('div',{style:{display:'flex',flexWrap:'wrap'}},
+          locationPrefs.map(lp=>h(TogglePill,{key:lp.id,id:lp.id,emoji:lp.emoji,label:lp.label,selected:!!(prefs[lp.id]),onToggle:(id,val)=>savePref(id,val)}))
+        )
+      ),
+      // Summary
+      (Object.values(prefs).some(Boolean))&&h('div',{style:{background:'rgba(34,197,94,0.08)',border:'1px solid rgba(34,197,94,0.2)',borderRadius:12,padding:16,marginBottom:12}},
+        h('div',{style:{fontWeight:700,fontSize:14,marginBottom:8,color:'var(--green)'}},'💚 My Housing Wish List'),
+        housingTypes.filter(x=>prefs[x.id]).length>0&&h('div',{style:{marginBottom:8}},
+          h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,marginBottom:4}},'Housing Type'),
+          housingTypes.filter(x=>prefs[x.id]).map(x=>h('span',{key:x.id,className:'chip',style:{marginRight:4}},x.emoji,' ',x.label))
+        ),
+        roommateCount.filter(x=>prefs[x.id]).length>0&&h('div',{style:{marginBottom:8}},
+          h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,marginBottom:4}},'Roommates'),
+          roommateCount.filter(x=>prefs[x.id]).map(x=>h('span',{key:x.id,className:'chip',style:{marginRight:4}},x.label))
+        ),
+        roommatePrefs.filter(x=>prefs[x.id]).length>0&&h('div',{style:{marginBottom:8}},
+          h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,marginBottom:4}},'Roommate Must-Haves'),
+          roommatePrefs.filter(x=>prefs[x.id]).map(x=>h('span',{key:x.id,className:'chip',style:{marginRight:4}},x.emoji,' ',x.label))
+        ),
+        locationPrefs.filter(x=>prefs[x.id]).length>0&&h('div',null,
+          h('div',{style:{fontSize:11,color:'var(--text3)',fontWeight:700,textTransform:'uppercase',letterSpacing:0.5,marginBottom:4}},'Location Must-Haves'),
+          locationPrefs.filter(x=>prefs[x.id]).map(x=>h('span',{key:x.id,className:'chip',style:{marginRight:4}},x.emoji,' ',x.label))
+        )
+      ),
+      // Help footer
+      h('div',{style:{background:'rgba(59,130,246,0.06)',border:'1px solid rgba(59,130,246,0.15)',borderRadius:12,padding:14,textAlign:'center',marginBottom:8}},
+        h('div',{style:{fontSize:20,marginBottom:4}},'💡'),
+        h('div',{style:{fontSize:12,color:'var(--text2)',lineHeight:1.6}},'Share this wish list with your instructor or caseworker — they can help you find housing that matches what you\'re looking for!')
+      )
     )
   );
 };
@@ -2264,6 +2969,7 @@ const App=()=>{
     {label:'Alerts',icon:'bell',component:AdminAlerts},
     {label:'Reqs',icon:'msg',component:AdminRequests},
     {label:'Checkin',icon:'clipboard',component:AdminCheckins},
+    {label:'Favs',icon:'star',component:AdminFavorites},
     {label:'Security',icon:'shield',component:AdminSecurity},
     {label:'Logins',icon:'settings',component:AdminLogins},
   ];
@@ -2282,15 +2988,22 @@ const App=()=>{
     {label:'Mileage',icon:'car',component:InstrMileage},
     {label:'Profile',icon:'staff',component:ProfileTab},
   ];
-  const partTabs=[
-    {label:'Home',icon:'home',component:PartHome},
-    {label:'Schedule',icon:'calendar',component:PartSchedule},
-    {label:'Goals',icon:'target',component:PartGoals},
-    {label:'Instructor',icon:'staff',component:PartInstructor},
-    {label:'Rights',icon:'shield',component:PartRights},
-    {label:'Rate',icon:'star',component:PartRate},
-    {label:'Grievance',icon:'flag',component:PartGrievance},
-  ];
+  const partTabs=(()=>{
+    const p=participants.find(x=>x.id===user.participantId)||participants[0];
+    const tabs=[
+      {label:'Home',icon:'home',component:PartHome},
+      {label:'Schedule',icon:'calendar',component:PartSchedule},
+      {label:'Goals',icon:'target',component:PartGoals},
+      {label:'Instructor',icon:'staff',component:PartInstructor},
+      {label:'Rights',icon:'shield',component:PartRights},
+    ];
+    if(p?.housingEnabled){
+      tabs.push({label:'Housing',icon:'home',component:PartHousing});
+    }
+    tabs.push({label:'Rate',icon:'star',component:PartRate});
+    tabs.push({label:'Grievance',icon:'flag',component:PartGrievance});
+    return tabs;
+  })();
 
   const tabConfig={Admin:adminTabs,Supervisor:supTabs,Instructor:instrTabs,Participant:partTabs}[user.role]||adminTabs;
   const safeTab=Math.min(activeTab,tabConfig.length-1);
