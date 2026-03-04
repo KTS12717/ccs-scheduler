@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+A<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable"A content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <title>CCS Scheduler</title>
 <link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;CCS Scheduler&quot;,&quot;short_name&quot;:&quot;CCS&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#0f172a&quot;,&quot;theme_color&quot;:&quot;#3b82f6&quot;}"/>
@@ -385,7 +385,7 @@ const hrsRemaining=(p,adjustments)=>{
 
 // ─── Seed default data ───
 const seedData=()=>{
-  if(LSraw.get('ccs_seeded_v4',false))return;
+  if(LSraw.get('ccs_seeded_v5',false))return;
   // Clear ALL old data unconditionally
   ['ccs_instructors','ccs_participants','ccs_users','ccs_events','ccs_adjustments',
    'ccs_mileage','ccs_notifications','ccs_attendance','ccs_checkins','ccs_sup_meetings',
@@ -414,6 +414,7 @@ const seedData=()=>{
         {id:'l1c',label:'Raley\'s Grocery Store',address:'9257 Elk Grove Blvd, Elk Grove, CA 95758',lat:38.4075,lng:-121.3720},
         {id:'l1d',label:'Elk Grove Regional Park',address:'9950 Elk Grove Blvd, Elk Grove, CA 95624',lat:38.4050,lng:-121.3800},
         {id:'l1e',label:'CCS Office',address:'123 Main Street, Galt, CA 95632',lat:38.2546,lng:-121.2996},
+        {id:'l1f',label:'Regal Elk Grove Movie Theater',address:'9400 Laguna Springs Dr, Elk Grove, CA 95758',lat:38.4021,lng:-121.3812},
       ],
       assignedInstructor:'ins1',
       maxHrsMonth:100,maxHrsWeek:25,
@@ -440,6 +441,14 @@ const seedData=()=>{
         Fri:{
           a:{start:'10:00',end:'12:30',locs:['l1d']},
           b:{start:'13:30',end:'15:00',locs:['l1e']}
+        },
+        Sat:{
+          a:{start:'16:00',end:'21:00',locs:['l1f']},
+          b:{start:'',end:'',locs:[]}
+        },
+        Sun:{
+          a:{start:'16:00',end:'21:00',locs:['l1f']},
+          b:{start:'',end:'',locs:[]}
         },
       },
       favoriteLocations:[
@@ -578,7 +587,7 @@ const seedData=()=>{
   LS.set('ccs_checkins',[]);
   LS.set('ccs_sup_meetings',[]);
   LS.set('ccs_audit',[]);
-  LSraw.set('ccs_seeded_v4',true);
+  LSraw.set('ccs_seeded_v5',true);
 };
 
 // ─── SVG Icons ───
@@ -674,6 +683,47 @@ const DateStrip=({selected,onChange,range=7})=>{
 };
 
 // ─── Login Screen ───
+// ─── WebAuthn / Biometric helpers ───
+const bufToB64=(buf)=>btoa(String.fromCharCode(...new Uint8Array(buf)));
+const b64ToBuf=(b64)=>{const bin=atob(b64);const buf=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);return buf.buffer;};
+const webAuthnAvailable=()=>!!(window.PublicKeyCredential&&navigator.credentials);
+
+const registerBiometric=async(user)=>{
+  const challenge=crypto.getRandomValues(new Uint8Array(32));
+  const cred=await navigator.credentials.create({publicKey:{
+    challenge,
+    rp:{name:'CCS Scheduler',id:location.hostname||'localhost'},
+    user:{id:new TextEncoder().encode(user.id||user.username),name:user.username,displayName:user.name||user.username},
+    pubKeyCredParams:[{alg:-7,type:'public-key'},{alg:-257,type:'public-key'}],
+    authenticatorSelection:{authenticatorAttachment:'platform',residentKey:'preferred',userVerification:'required'},
+    timeout:60000
+  }});
+  const credId=bufToB64(cred.rawId);
+  const stored=LSraw.get('ccs_biometrics',{});
+  stored[user.username]=credId;
+  LSraw.set('ccs_biometrics',stored);
+  return true;
+};
+
+const loginWithBiometric=async(username)=>{
+  const stored=LSraw.get('ccs_biometrics',{});
+  const credId=username?stored[username]:null;
+  const allowCreds=credId?[{id:b64ToBuf(credId),type:'public-key',transports:['internal']}]:[];
+  const challenge=crypto.getRandomValues(new Uint8Array(32));
+  const assertion=await navigator.credentials.get({publicKey:{
+    challenge,
+    allowCredentials:allowCreds,
+    userVerification:'required',
+    timeout:60000
+  }});
+  return assertion;
+};
+
+const hasBiometric=(username)=>{
+  const stored=LSraw.get('ccs_biometrics',{});
+  return username?!!stored[username]:Object.keys(stored).length>0;
+};
+
 const LoginScreen=({onLogin})=>{
   const[username,setUsername]=useState('');
   const[password,setPassword]=useState('');
@@ -682,12 +732,54 @@ const LoginScreen=({onLogin})=>{
   const[showPwd,setShowPwd]=useState(false);
   const[hipaaAck,setHipaaAck]=useState(false);
   const[showHipaa,setShowHipaa]=useState(true);
+  const[bioDone,setBioDone]=useState(false);
+  const[showBioPrompt,setShowBioPrompt]=useState(false);
+  const[pendingUser,setPendingUser]=useState(null);
+  const[bioStatus,setBioStatus]=useState('');
 
+  const canBio=webAuthnAvailable();
+  const anyBioRegistered=hasBiometric('');
+
+  const finishLogin=(user)=>{
+    clearAttempts(user.username);
+    createSessionToken();
+    _sessionUser=user;
+    auditLog('LOGIN_SUCCESS',`User logged in: ${user.username} (${user.role})`);
+    onLogin(user);
+  };
+
+  // Biometric-first login (no username needed if resident key)
+  const doBioLogin=async()=>{
+    if(!hipaaAck){setError('Please acknowledge the HIPAA notice first.');return;}
+    setBioStatus('scanning');setError('');setLoading(true);
+    try{
+      const assertion=await loginWithBiometric(username||null);
+      if(!assertion){setError('Biometric failed. Try password.');setLoading(false);setBioStatus('');return;}
+      // Find user by username
+      const users=LS.get('ccs_users',[]);
+      let user=username?users.find(u=>u.username===username):null;
+      // If no username typed, try to get it from the credential response (resident key)
+      if(!user&&assertion.response?.userHandle){
+        const decoded=new TextDecoder().decode(assertion.response.userHandle);
+        user=users.find(u=>u.id===decoded||u.username===decoded);
+      }
+      if(!user){setError('Account not found. Please type your username.');setLoading(false);setBioStatus('');return;}
+      setBioStatus('success');
+      auditLog('LOGIN_BIOMETRIC',`Biometric login: ${user.username} (${user.role})`);
+      setTimeout(()=>finishLogin(user),600);
+    }catch(e){
+      if(e.name==='NotAllowedError'){setError('Biometric cancelled or not recognized.');}
+      else if(e.name==='InvalidStateError'){setError('No face ID registered for this account.');}
+      else{setError('Biometric unavailable. Use password below.');}
+      setLoading(false);setBioStatus('');
+    }
+  };
+
+  // Password login
   const submit=()=>{
     if(!hipaaAck){setError('You must acknowledge the HIPAA notice to continue.');return;}
     setLoading(true);setError('');
     setTimeout(()=>{
-      // Check lockout
       if(isLockedOut(username)){
         const a=getAttempts(username);
         const remaining=Math.ceil((LOCKOUT_MS-(Date.now()-a.lastAt))/60000);
@@ -699,37 +791,71 @@ const LoginScreen=({onLogin})=>{
       const user=users.find(u=>u.username===username);
       let authenticated=false;
       if(user){
-        if(user.passwordHash){
-          authenticated=verifyPassword(password,user.passwordHash,user.passwordSalt);
-        } else {
-          // Legacy plaintext fallback (will be migrated)
-          authenticated=(user.password===password);
-        }
+        if(user.passwordHash){authenticated=verifyPassword(password,user.passwordHash,user.passwordSalt);}
+        else{authenticated=(user.password===password);}
       }
       if(authenticated){
-        clearAttempts(username);
-        createSessionToken();
-        _sessionUser=user;
-        auditLog('LOGIN_SUCCESS',`User logged in: ${username} (${user.role})`);
-        onLogin(user);
+        // Offer to set up biometrics if available and not yet registered
+        if(canBio&&!hasBiometric(username)){
+          setPendingUser(user);setShowBioPrompt(true);setLoading(false);
+        } else {
+          finishLogin(user);
+        }
       } else {
         const a=getAttempts(username);
         const newCount=a.count+1;
         setAttempts(username,newCount);
         const remaining=MAX_LOGIN_ATTEMPTS-newCount;
         auditLog('LOGIN_FAIL',`Failed login attempt for: ${username} (${newCount}/${MAX_LOGIN_ATTEMPTS})`);
-        if(remaining<=0){
-          setError(`Too many failed attempts. Account locked for 15 minutes.`);
-        } else {
-          setError(`Invalid credentials. ${remaining} attempt${remaining!==1?'s':''} remaining before lockout.`);
-        }
+        if(remaining<=0){setError('Too many failed attempts. Account locked for 15 minutes.');}
+        else{setError(`Invalid credentials. ${remaining} attempt${remaining!==1?'s':''} remaining before lockout.`);}
         setLoading(false);
       }
     },500);
   };
 
+  // Biometric setup prompt after password login
+  if(showBioPrompt&&pendingUser){
+    return h('div',{className:'login-wrap'},
+      h('div',{className:'login-logo'},'CCS'),
+      h('div',{className:'login-title'},'CCS Scheduler'),
+      h('div',{className:'login-card'},
+        h('div',{style:{textAlign:'center',marginBottom:20}},
+          h('div',{style:{fontSize:56,marginBottom:8}},bioDone?'✅':'🫱'),
+          h('div',{style:{fontWeight:800,fontSize:18,marginBottom:6}},bioDone?'Face ID Enabled!':'Enable Face ID?'),
+          h('div',{style:{fontSize:13,color:'var(--text2)',lineHeight:1.6}},
+            bioDone
+              ?`You can now sign in instantly with your face or fingerprint.`
+              :`Sign in faster next time using your face, fingerprint, or device PIN — no password needed.`
+          )
+        ),
+        !bioDone&&h('div',null,
+          h('button',{
+            className:'btn btn-primary btn-block',
+            style:{fontSize:15,padding:'14px',marginBottom:10},
+            onClick:async()=>{
+              try{
+                await registerBiometric(pendingUser);
+                setBioDone(true);
+                auditLog('BIOMETRIC_REGISTER',`Face ID registered: ${pendingUser.username}`);
+                setTimeout(()=>finishLogin(pendingUser),1500);
+              }catch(e){
+                if(e.name==='NotAllowedError'){setError('Setup cancelled.');}
+                else{setError('Could not set up Face ID. Using password login.');}
+                finishLogin(pendingUser);
+              }
+            }
+          },'🫱 Set Up Face ID / Biometrics'),
+          h('button',{className:'btn btn-ghost btn-block',onClick:()=>finishLogin(pendingUser)},'Skip — use password each time')
+        ),
+        bioDone&&h('div',{style:{textAlign:'center',color:'var(--green)',fontWeight:700,fontSize:14}},'Logging you in…'),
+        error&&h('div',{className:'alert alert-red',style:{marginTop:10}},h(Icon,{name:'alert',size:16}),h('span',null,error))
+      )
+    );
+  }
+
   return h('div',{className:'login-wrap'},
-    // HIPAA Notice Modal
+    // HIPAA Modal
     showHipaa&&h('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:20}},
       h('div',{style:{background:'var(--bg2)',borderRadius:20,padding:24,maxWidth:400,width:'100%',border:'1px solid var(--border)'}},
         h('div',{style:{textAlign:'center',marginBottom:16}},
@@ -739,47 +865,85 @@ const LoginScreen=({onLogin})=>{
         ),
         h('div',{style:{background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:10,padding:14,fontSize:12,color:'var(--text2)',lineHeight:1.7,marginBottom:16}},
           h('strong',{style:{color:'var(--red)',display:'block',marginBottom:6}},'⚠ NOTICE: Confidential Health Information'),
-          'This system contains Protected Health Information (PHI) subject to the Health Insurance Portability and Accountability Act (HIPAA) of 1996. ',
-          h('br',null),h('br',null),
-          'By logging in you confirm that you are an authorized user, that you will only access information necessary for your job duties, that you will not share login credentials, and that any unauthorized disclosure of PHI is a federal violation.',
-          h('br',null),h('br',null),
+          'This system contains Protected Health Information (PHI) subject to HIPAA of 1996. By logging in you confirm you are an authorized user and will only access information necessary for your job duties.',
+          h('br'),h('br'),
           h('strong',null,'Unauthorized access is monitored, logged, and prosecutable under 45 CFR Parts 160 & 164.')
         ),
         h('div',{style:{display:'flex',alignItems:'flex-start',gap:10,marginBottom:16,cursor:'pointer'},onClick:()=>setHipaaAck(a=>!a)},
           h('div',{style:{width:20,height:20,borderRadius:4,border:`2px solid ${hipaaAck?'var(--green)':'var(--border)'}`,background:hipaaAck?'var(--green)':'transparent',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',marginTop:1}},
             hipaaAck&&h('span',{style:{color:'#fff',fontSize:13,fontWeight:900}},'✓')
           ),
-          h('span',{style:{fontSize:12,color:'var(--text2)',lineHeight:1.5}},'I understand and agree to the terms above. I am an authorized user of this system.')
+          h('span',{style:{fontSize:12,color:'var(--text2)',lineHeight:1.5}},'I understand and agree. I am an authorized user of this system.')
         ),
-        h('button',{className:'btn btn-primary btn-block',onClick:()=>{if(hipaaAck)setShowHipaa(false);else setError('You must check the box above.');},disabled:!hipaaAck},'Continue to Login')
+        h('button',{className:'btn btn-primary btn-block',onClick:()=>{if(hipaaAck)setShowHipaa(false);else setError('Please check the box above.');},disabled:!hipaaAck},'Continue to Login')
       )
     ),
+
     h('div',{className:'login-logo'},'CCS'),
     h('div',{className:'login-title'},'CCS Scheduler'),
     h('div',{className:'login-sub'},'Community Connections Support · ILS'),
     h('div',{style:{display:'flex',gap:6,justifyContent:'center',marginBottom:16}},
       h('span',{className:'badge badge-green'},h(Icon,{name:'shield',size:11}),' AES-256 Encrypted'),
-      h('span',{className:'badge badge-blue'},'HIPAA Compliant')
+      h('span',{className:'badge badge-blue'},'HIPAA Compliant'),
+      canBio&&h('span',{className:'badge badge-purple'},'🫱 Biometrics Ready')
     ),
+
     h('div',{className:'login-card'},
-      h('div',{className:'form-group'},
-        h('label',{className:'form-label'},'Username'),
-        h('input',{className:'form-input',value:username,onChange:e=>setUsername(e.target.value),placeholder:'Enter username',autoCapitalize:'none',autoComplete:'username'})
-      ),
-      h('div',{className:'form-group'},
-        h('label',{className:'form-label'},'Password'),
-        h('div',{style:{position:'relative'}},
-          h('input',{className:'form-input',type:showPwd?'text':'password',value:password,onChange:e=>setPassword(e.target.value),placeholder:'Enter password',autoComplete:'current-password',onKeyDown:e=>e.key==='Enter'&&submit(),style:{paddingRight:40}}),
-          h('button',{onClick:()=>setShowPwd(v=>!v),style:{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:16}},showPwd?'🙈':'👁')
+      // ── Biometric login section ──
+      canBio&&h('div',null,
+        (bioStatus==='scanning')&&h('div',{style:{textAlign:'center',padding:'24px 0'}},
+          h('div',{style:{fontSize:60,marginBottom:8,animation:'pulse 1s infinite'}},'🫱'),
+          h('div',{style:{fontWeight:700,fontSize:15,color:'var(--blue)'}},
+            typeof window!=='undefined'&&/iPhone|iPad|Mac/i.test(navigator.userAgent)?'Looking for your face…':'Checking biometrics…'),
+          h('div',{style:{fontSize:12,color:'var(--text3)',marginTop:4}},'Follow your device\'s prompt')
+        ),
+        (bioStatus==='success')&&h('div',{style:{textAlign:'center',padding:'20px 0'}},
+          h('div',{style:{fontSize:56}},'✅'),
+          h('div',{style:{fontWeight:700,color:'var(--green)',marginTop:6}},'Identity Confirmed!')
+        ),
+        (bioStatus==='')&&h('div',null,
+          h('button',{
+            className:'btn btn-primary btn-block',
+            style:{fontSize:15,padding:'14px',background:'linear-gradient(135deg,#1e3a5f,#2563eb)',marginBottom:12},
+            disabled:!hipaaAck||loading,
+            onClick:doBioLogin
+          },
+            h('span',{style:{fontSize:20,marginRight:8}},'🫱'),
+            /iPhone|iPad/i.test(navigator.userAgent||'')?'Sign in with Face ID':
+            /Mac/i.test(navigator.userAgent||'')?'Sign in with Touch ID':
+            /Android/i.test(navigator.userAgent||'')?'Sign in with Fingerprint':
+            'Sign in with Biometrics'
+          ),
+          h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:12}},
+            h('div',{style:{flex:1,height:1,background:'var(--border)'}}),
+            h('span',{style:{fontSize:11,color:'var(--text3)',whiteSpace:'nowrap'}},'or sign in with password'),
+            h('div',{style:{flex:1,height:1,background:'var(--border)'}})
+          )
         )
       ),
-      error&&h('div',{className:'alert alert-red',style:{marginBottom:12}},h(Icon,{name:'alert',size:16}),h('span',null,error)),
-      h('button',{className:'btn btn-primary btn-block',onClick:submit,disabled:loading||!hipaaAck},loading?'Authenticating…':'Sign In'),
-      h('div',{style:{marginTop:12,textAlign:'center'}},
-        h('span',{style:{fontSize:11,color:'var(--text3)',cursor:'pointer'},onClick:()=>setShowHipaa(true)},'📋 Review HIPAA Notice')
+
+      // ── Password login ──
+      bioStatus===''&&h('div',null,
+        h('div',{className:'form-group'},
+          h('label',{className:'form-label'},'Username'),
+          h('input',{className:'form-input',value:username,onChange:e=>setUsername(e.target.value),placeholder:'Enter username',autoCapitalize:'none',autoComplete:'username'})
+        ),
+        h('div',{className:'form-group'},
+          h('label',{className:'form-label'},'Password'),
+          h('div',{style:{position:'relative'}},
+            h('input',{className:'form-input',type:showPwd?'text':'password',value:password,onChange:e=>setPassword(e.target.value),placeholder:'Enter password',autoComplete:'current-password',onKeyDown:e=>e.key==='Enter'&&submit(),style:{paddingRight:40}}),
+            h('button',{onClick:()=>setShowPwd(v=>!v),style:{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:16}},showPwd?'🙈':'👁')
+          )
+        ),
+        error&&h('div',{className:'alert alert-red',style:{marginBottom:12}},h(Icon,{name:'alert',size:16}),h('span',null,error)),
+        h('button',{className:'btn btn-primary btn-block',onClick:submit,disabled:loading||!hipaaAck},loading?'Authenticating…':'Sign In'),
+        h('div',{style:{marginTop:12,textAlign:'center'}},
+          h('span',{style:{fontSize:11,color:'var(--text3)',cursor:'pointer'},onClick:()=>setShowHipaa(true)},'📋 Review HIPAA Notice')
+        )
       ),
+
       h('div',{style:{marginTop:16,padding:12,background:'rgba(59,130,246,0.08)',borderRadius:8}},
-        h('div',{style:{fontSize:11,color:'var(--text3)',marginBottom:6,fontWeight:600}},'DEMO CREDENTIALS'),
+        h('div',{style:{fontSize:11,color:'var(--text3)',marginBottom:6,fontWeight:600}},'DEMO CREDENTIALS — tap to fill'),
         [['admin','Admin@2025','Admin'],['mgonzalez','Sup@2025','Supervisor'],['dpark','Ins@2025','Instructor'],['jwilliams','Part@2025','Participant']].map(([u,p,r])=>
           h('div',{key:u,style:{fontSize:11,color:'var(--text2)',padding:'2px 0'}},
             h('span',{style:{color:'var(--blue)',fontWeight:600,cursor:'pointer'},onClick:()=>{setUsername(u);setPassword(p);}},u),' · ',p,' · ',h('span',{className:'badge badge-gray'},r)
@@ -788,7 +952,8 @@ const LoginScreen=({onLogin})=>{
       )
     ),
     h('div',{style:{marginTop:16,fontSize:10,color:'var(--text3)',textAlign:'center',maxWidth:340,lineHeight:1.6}},
-      '🔒 All data encrypted with AES-256-CBC. Sessions auto-expire after 15 minutes of inactivity. All access is logged per HIPAA §164.312.'
+      '🔒 AES-256-CBC encrypted · Sessions expire after 15 min · All access logged (HIPAA §164.312)',
+      canBio&&h('div',{style:{marginTop:4}},'🫱 Biometrics use your device\'s secure enclave — face data never leaves your device')
     )
   );
 };
